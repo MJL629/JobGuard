@@ -19,6 +19,9 @@ from app.rag.company_kb import company_kb
 
 def load_jobs() -> list[dict]:
     path = os.path.join(os.path.dirname(__file__), "..", "data", "seed_jobs_batch4.json")
+    if not os.path.exists(path):
+        print(f"  [SKIP] File not found: {path}")
+        return []
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
