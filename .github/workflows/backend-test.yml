@@ -184,7 +184,7 @@ jobs:
           asyncio.run(test_bg_check())
           PYEOF
 
-      - name: Batch Background Check (all 61 jobs)
+      - name: Batch Background Check (all jobs)
         run: |
           cd backend
           python scripts/batch_background_check.py --delay 1.5
