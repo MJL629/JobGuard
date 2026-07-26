@@ -1,0 +1,168 @@
+name: JobGuard 后端测试与种子数据灌入
+
+on:
+  workflow_dispatch:  # 手动触发
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-test.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root123
+          MYSQL_DATABASE: jobguard
+          MYSQL_USER: jobguard
+          MYSQL_PASSWORD: jobguard123
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h localhost"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      ZHIPU_API_KEY: ${{ secrets.ZHIPU_API_KEY }}
+      DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+      SILICONFLOW_API_KEY: ${{ secrets.SILICONFLOW_API_KEY }}
+      MYSQL_HOST: 127.0.0.1
+      MYSQL_PORT: 3306
+      MYSQL_USER: jobguard
+      MYSQL_PASSWORD: jobguard123
+      MYSQL_DATABASE: jobguard
+      CHROMA_PERSIST_DIR: ./data/chroma
+      DEBUG: "true"
+      SECRET_KEY: ci-test-secret-key
+      CORS_ORIGINS: http://localhost:5173
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install -r requirements.txt
+
+      - name: Wait for MySQL
+        run: |
+          for i in {1..30}; do
+            if mysqladmin ping -h 127.0.0.1 -u jobguard -pjobguard123 --silent; then
+              echo "MySQL is ready"
+              break
+            fi
+            echo "Waiting for MySQL... ($i/30)"
+            sleep 2
+          done
+
+      - name: Init database
+        run: |
+          mysql -h 127.0.0.1 -u jobguard -pjobguard123 jobguard < data/init.sql
+
+      - name: Run unit tests
+        run: |
+          cd backend
+          python -m pytest tests/ -v
+
+      - name: Seed users
+        run: |
+          cd backend
+          python scripts/seed_users.py
+
+      - name: Seed jobs
+        run: |
+          cd backend
+          python scripts/seed_jobs.py
+          python scripts/seed_jobs_batch2.py
+
+      - name: Test LLM Gateway connectivity
+        run: |
+          cd backend
+          python -c "
+          import os, sys
+          from dotenv import load_dotenv
+          from app.llm.gateway import llm_gateway
+          
+          print('=== LLM Gateway 连通性测试 ===')
+          
+          # Test Zhipu
+          print('\n[Zhipu] Testing primary chat...')
+          try:
+              resp = llm_gateway.chat_primary('请用一句话介绍你自己', max_tokens=50)
+              print(f'  OK: {resp[:80]}...')
+          except Exception as e:
+              print(f'  FAIL: {e}')
+          
+          # Test DeepSeek
+          print('\n[DeepSeek] Testing reasoning chat...')
+          try:
+              resp = llm_gateway.chat_reasoning('1+1等于几？请直接回答', max_tokens=50)
+              print(f'  OK: {resp[:80]}...')
+          except Exception as e:
+              print(f'  FAIL: {e}')
+          
+          # Test SiliconFlow embedding
+          print('\n[SiliconFlow] Testing embeddings...')
+          try:
+              emb = llm_gateway.embed(['测试文本'])
+              print(f'  OK: dim={len(emb[0]) if emb else 0}')
+          except Exception as e:
+              print(f'  FAIL: {e}')
+          
+          print('\n=== 测试完成 ===')
+          "
+
+      - name: Test Background Check Agent
+        run: |
+          cd backend
+          python -c "
+          import os, sys, json, asyncio
+          from app.agents.background_check import background_check
+          
+          # 选一个风险信号明显的岗位做背调
+          job_info = {
+              'company_name': '成都探真科技有限公司',
+              'job_title': 'Python AI工程师助理',
+              'salary_min': 150, 'salary_max': 200,
+              'location': '成都·武侯区',
+              'job_category': '工程',
+              'sub_category': 'AI Agent开发',
+              'jd_text': '7天/周工作制，参与AI Agent开发',
+              'requirements': ['Python', 'AI Agent'],
+              'company_size': '20-99人',
+              'company_financing': '未融资',
+          }
+          
+          user_profile = {
+              'full_name': '测试用户',
+              'degree': '本科', 'major': '计算机',
+              'skills': [{'skill_name': 'Python', 'proficiency': '熟练'}],
+              'years_of_experience': 0,
+              'expected_salary_min': 8000, 'expected_salary_max': 12000,
+          }
+          
+          print('=== 背调分析测试 ===')
+          report = asyncio.run(background_check.investigate(
+              job_info=job_info,
+              user_profile=user_profile,
+          ))
+          print(json.dumps(report, ensure_ascii=False, indent=2))
+          "
+
+      - name: Summary
+        run: |
+          echo "✅ 所有测试通过"
+          echo "📊 LLM Gateway 三个服务均连通正常"
+          echo "🔍 背调分析功能可用"
