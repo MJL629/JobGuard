@@ -34,7 +34,7 @@ PROVIDERS = {
     "deepseek": {
         "base_url": "https://api.deepseek.com/v1",
         "api_key_env": "DEEPSEEK_API_KEY",
-        "default_model": "deepseek-chat",
+        "default_model": "deepseek-v4-flash",
         "role": "reasoning",
     },
     "siliconflow": {
@@ -195,7 +195,7 @@ class LLMGateway:
     ) -> str | AsyncGenerator[str, None]:
         """使用推理模型（DeepSeek V3）"""
         return await self.chat(
-            messages, provider="deepseek", model="deepseek-chat", temperature=0.3, stream=stream
+            messages, provider="deepseek", model="deepseek-v4-flash", temperature=0.3, stream=stream
         )
 
     async def chat_with_long_context(
