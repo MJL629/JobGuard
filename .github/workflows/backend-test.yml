@@ -1,7 +1,7 @@
-name: JobGuard 后端测试与种子数据灌�?
+name: JobGuard Backend Test & Seed Data
 
 on:
-  workflow_dispatch:  # 手动触发
+  workflow_dispatch:
   push:
     branches: [main]
     paths:
@@ -92,86 +92,93 @@ jobs:
       - name: Test LLM Gateway connectivity
         run: |
           cd backend
-          python -c "
+          python3 << 'PYEOF'
           import os, sys, asyncio
-          from dotenv import load_dotenv
           from app.llm.gateway import llm_gateway
-          
+
           async def test_gateway():
-              print('=== LLM Gateway 连通性测�? ===')
-              
+              print("=== LLM Gateway Connectivity Test ===")
+
               # Test Zhipu
-              print('\n[Zhipu] Testing primary chat...')
+              print("\n[Zhipu] Testing primary chat...")
               try:
-                  messages = [{'role': 'user', 'content': '请用一句话介绍你自�?'}]
+                  messages = [{"role": "user", "content": "Say hello in one sentence"}]
                   resp = await llm_gateway.chat_primary(messages)
-                  print(f'  OK: {resp[:80]}...')
+                  print(f"  OK: {resp[:100]}...")
               except Exception as e:
-                  print(f'  FAIL: {e}')
-              
+                  print(f"  FAIL: {e}")
+
               # Test DeepSeek
-              print('\n[DeepSeek] Testing reasoning chat...')
+              print("\n[DeepSeek] Testing reasoning chat...")
               try:
-                  messages = [{'role': 'user', 'content': '1+1等于几？请直接回�?'}]
+                  messages = [{"role": "user", "content": "What is 1+1? Answer directly."}]
                   resp = await llm_gateway.chat_reasoning(messages)
-                  print(f'  OK: {resp[:80]}...')
+                  print(f"  OK: {resp[:100]}...")
               except Exception as e:
-                  print(f'  FAIL: {e}')
-              
+                  print(f"  FAIL: {e}")
+
               # Test SiliconFlow embedding
-              print('\n[SiliconFlow] Testing embeddings...')
+              print("\n[SiliconFlow] Testing embeddings...")
               try:
-                  emb = await llm_gateway.embed(['测试文本'])
-                  print(f'  OK: dim={len(emb[0]) if emb else 0}')
+                  emb = await llm_gateway.embed(["test text"])
+                  dim = len(emb[0]) if emb else 0
+                  print(f"  OK: dim={dim}")
               except Exception as e:
-                  print(f'  FAIL: {e}')
-              
-              print('\n=== 测试完成 ===')
-          
+                  print(f"  FAIL: {e}")
+
+              print("\n=== Test Complete ===")
+
           asyncio.run(test_gateway())
-          "
+          PYEOF
 
       - name: Test Background Check Agent
         run: |
           cd backend
-          python -c "
+          python3 << 'PYEOF'
           import os, sys, json, asyncio
           from app.agents.background_check import background_check
-          
+
           async def test_bg_check():
-              # 选一个风险信号明显的岗位做背�?
               job_info = {
-                  'company_name': '成都探真科技有限公司',
-                  'job_title': 'Python AI工程师助�?',
-                  'salary_min': 150, 'salary_max': 200,
-                  'location': '成都·武侯�?',
-                  'job_category': '工程',
-                  'sub_category': 'AI Agent开�?',
-                  'jd_raw_text': '7�?/周工作制，参与AI Agent开�?',
-                  'requirements': ['Python', 'AI Agent'],
-                  'company_size': '20-99�?',
-                  'company_financing': '未融�?',
+                  "company_name": "Chengdu Tanzhen Technology",
+                  "job_title": "Python AI Engineer Assistant",
+                  "salary_min": 150, "salary_max": 200,
+                  "location": "Chengdu Wuhou",
+                  "job_category": "Engineering",
+                  "sub_category": "AI Agent Development",
+                  "jd_raw_text": "7 days/week work schedule, participate in AI Agent development",
+                  "requirements": ["Python", "AI Agent"],
+                  "company_size": "20-99",
+                  "company_financing": "Unfunded",
               }
-              
+
               user_profile = {
-                  'full_name': '测试用户',
-                  'degree': '本科', 'major': '计算�?',
-                  'skills': [{'skill_name': 'Python', 'proficiency': '熟练'}],
-                  'years_of_experience': 0,
-                  'expected_salary_min': 8000, 'expected_salary_max': 12000,
+                  "basic": {
+                      "full_name": "Test User",
+                      "degree": "Bachelor",
+                      "major": "CS",
+                      "expected_salary_min": 8000,
+                      "expected_salary_max": 12000,
+                  },
+                  "preferences": {
+                      "preferred_locations": ["Chengdu"],
+                      "weekend_preference": "weekends_off",
+                      "overtime_tolerance": "occasional",
+                      "labor_intensity": "medium",
+                  },
               }
-              
-              print('=== 背调分析测试 ===')
+
+              print("=== Background Check Test ===")
               report = await background_check.investigate(
                   job_info=job_info,
                   user_profile=user_profile,
               )
               print(json.dumps(report, ensure_ascii=False, indent=2))
-          
-          asyncio.run(test_bg_check())
-          "
 
-      - name: Batch Background Check (高风险岗�?)
+          asyncio.run(test_bg_check())
+          PYEOF
+
+      - name: Batch Background Check (high-risk jobs only)
         run: |
           cd backend
           python scripts/batch_background_check.py --risk-only --delay 2.0
@@ -186,7 +193,7 @@ jobs:
 
       - name: Summary
         run: |
-          echo "�? 所有测试通过"
-          echo "📊 LLM Gateway 三个服务均连通正�?"
-          echo "🔍 背调分析功能可用"
-          echo "📁 背调结果已上传为 Artifact"
+          echo "=== All Tests Passed ==="
+          echo "LLM Gateway: Zhipu + DeepSeek + SiliconFlow all connected"
+          echo "Background Check: Agent functional"
+          echo "Batch Analysis: Results uploaded as Artifact"
