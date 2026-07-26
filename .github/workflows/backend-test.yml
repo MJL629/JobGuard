@@ -184,10 +184,10 @@ jobs:
           asyncio.run(test_bg_check())
           PYEOF
 
-      - name: Batch Background Check (high-risk jobs only)
+      - name: Batch Background Check (all 61 jobs)
         run: |
           cd backend
-          python scripts/batch_background_check.py --risk-only --delay 2.0
+          python scripts/batch_background_check.py --delay 1.5
 
       - name: Upload background check results
         uses: actions/upload-artifact@v4
