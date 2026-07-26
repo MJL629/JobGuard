@@ -1,13 +1,13 @@
 """
 企业背调 Agent
 
-职责�?
-1. 通过 WebSearch 实时检索企业信息（社保人数、劳动争议、网络口碑等�?
+职责：
+1. 通过 WebSearch 实时检索企业信息（社保人数、劳动争议、网络口碑等）
 2. 分析 JD 话术，识别加班暗示、虚假宣传、刷 KPI 嫌疑
 3. 结合用户画像的工作强度偏好，给出个性化推荐指数
-4. 输出结构化风险评估报�?
+4. 输出结构化风险评估报告
 
-数据优先级：用户提供的岗位信�? > 实时检索结�? > 知识库历史数�?
+数据优先级：用户提供的岗位信息 > 实时检索结果 > 知识库历史数据
 """
 
 import json
@@ -22,12 +22,12 @@ logger = logging.getLogger(__name__)
 # ─── Prompt 模板 ─────────────────────────────────────────────────────────
 
 # 阶段 1：JD 话术分析（用主力模型，速度快）
-JD_ANALYSIS_PROMPT = """你是一位资深的招聘市场分析专家。请分析以下岗位描述，识别潜在的"话术陷阱"�?
+JD_ANALYSIS_PROMPT = """你是一位资深的招聘市场分析专家。请分析以下岗位描述，识别潜在的"话术陷阱"。
 
 ## 岗位信息
 - 公司：{company_name}
 - 岗位：{job_title}
-- 薪资：{salary_min}-{salary_max}�?/�?
+- 薪资：{salary_min}-{salary_max}元/月
 - 地点：{location}
 - 岗位描述：{jd_text}
 - 福利：{benefits}
@@ -35,25 +35,25 @@ JD_ANALYSIS_PROMPT = """你是一位资深的招聘市场分析专家。请分�
 ## 分析维度
 
 ### 1. 加班暗示识别
-以下话术通常暗示加班严重�?
-- "抗压能力�?" �? 工作压力�?
-- "拥抱变化" �? 业务不稳定，经常调整
-- "弹性工作制" �? 可能意味着无偿加班（需结合上下文）
-- "有创业精�?" �? 可能需�? 996
-- "以结果为导向" �? 只看结果不计工时
-- "能接受高强度工作" �? 明确告知会加�?
-- "大小�?" / "单休" �? 明确告知非双�?
+以下话术通常暗示加班严重：
+- "抗压能力强" → 工作压力大
+- "拥抱变化" → 业务不稳定，经常调整
+- "弹性工作制" → 可能意味着无偿加班（需结合上下文）
+- "有创业精神" → 可能需要 996
+- "以结果为导向" → 只看结果不计工时
+- "能接受高强度工作" → 明确告知会加班
+- "大小周" / "单休" → 明确告知非双休
 
-### 2. 薪资真实性评�?
-- 薪资范围是否过大（如 10K-30K，实际大概率�? 10K�?
+### 2. 薪资真实性评估
+- 薪资范围是否过大（如 10K-30K，实际大概率是 10K）
 - 结合岗位要求判断薪资是否合理
-- 是否�?"薪资面议"等模糊表�?
+- 是否有"薪资面议"等模糊表述
 
-### 3. 虚假宣传/�? KPI 判断
-- 岗位描述过于宽泛/模板�? �? 可能是假岗位
-- 要求极低但薪资极�? �? 虚假宣传
-- 描述与岗位名称不匹配 �? 挂羊头卖狗肉
-- 只提福利不提工作内容 �? 可能是传销/培训机构
+### 3. 虚假宣传/刷 KPI 判断
+- 岗位描述过于宽泛/模板化 → 可能是假岗位
+- 要求极低但薪资极高 → 虚假宣传
+- 描述与岗位名称不匹配 → 挂羊头卖狗肉
+- 只提福利不提工作内容 → 可能是传销/培训机构
 
 ### 4. 工作制度推断
 - 从上下文字段推断单休还是双休
@@ -69,17 +69,17 @@ JD_ANALYSIS_PROMPT = """你是一位资深的招聘市场分析专家。请分�
   "fake_job_suspicion": "low/medium/high",
   "fake_job_reasons": ["疑似原因1"],
   "kpi_brushing_suspicion": "low/medium/high",
-  "work_schedule_inferred": "推断的工作制度（双休/大小�?/单休/未知�?",
-  "jd_quality": "详细专业/模板�?/过于简�?/可疑",
-  "jd_analysis_summary": "JD 分析总结�?1-2句话�?"
+  "work_schedule_inferred": "推断的工作制度（双休/大小周/单休/未知）",
+  "jd_quality": "详细专业/模板化/过于简略/可疑",
+  "jd_analysis_summary": "JD 分析总结（1-2句话）"
 }}
 ```
 
-只输�? JSON�?"""
+只输出 JSON。"""
 
 
-# 阶段 2：综合风险评估（�? DeepSeek V3 推理模型�?
-RISK_ASSESSMENT_PROMPT = """你是一位企业风险评估专家。请综合以下信息，给出该岗位的全面风险评估�?
+# 阶段 2：综合风险评估（用 DeepSeek V3 推理模型）
+RISK_ASSESSMENT_PROMPT = """你是一位企业风险评估专家。请综合以下信息，给出该岗位的全面风险评估。
 
 ## 岗位信息
 {job_info}
@@ -93,7 +93,7 @@ RISK_ASSESSMENT_PROMPT = """你是一位企业风险评估专家。请综合以�
 ## 网络口碑
 {online_reputation}
 
-## 用户画像（用于个性化评估�?
+## 用户画像（用于个性化评估）
 {user_profile}
 
 ## 评估要求
@@ -102,43 +102,43 @@ RISK_ASSESSMENT_PROMPT = """你是一位企业风险评估专家。请综合以�
 1. **社保/经营风险**：参保人数是否合理、是否有经营异常
 2. **法律风险**：是否有劳动争议、类型和严重程度
 3. **口碑风险**：员工评价、网络口碑倾向
-4. **JD 风险**：是否存在虚假宣传、加班暗�?
-5. **薪资真实�?**：结合用户期望，判断薪资是否合理
-6. **匹配�?**：该岗位与用户画像的匹配程度
+4. **JD 风险**：是否存在虚假宣传、加班暗示
+5. **薪资真实性**：结合用户期望，判断薪资是否合理
+6. **匹配度**：该岗位与用户画像的匹配程度
 7. **个性化建议**：结合用户的工作强度偏好给出建议
 
 ## 输出格式
 ```json
 {{
   "risk_level": "low/medium/high/critical",
-  "recommendation_index": 1-5的整�?,
-  "recommendation_text": "推荐/谨慎考虑/不太推荐/强烈不推�?",
+  "recommendation_index": 1-5的整数,
+  "recommendation_text": "推荐/谨慎考虑/不太推荐/强烈不推荐",
   "dimensions": {{
     "social_insurance": {{
       "participants": "参保人数或null",
       "trend": "趋势分析",
       "assessment": "评估说明",
-      "score": 1-5风险分（5=最安全�?
+      "score": 1-5风险分（5=最安全）
     }},
     "labor_disputes": {{
       "total_cases": "劳动争议数量或null",
-      "recent_12m": "�?12个月数量",
+      "recent_12m": "近12个月数量",
       "main_types": ["类型1"],
       "assessment": "评估说明",
-      "score": 1-5风险�?
+      "score": 1-5风险分
     }},
     "business_risk": {{
       "abnormal_operations": "经营异常数量",
       "administrative_penalties": "行政处罚数量",
       "assessment": "评估说明",
-      "score": 1-5风险�?
+      "score": 1-5风险分
     }},
     "online_reputation": {{
-      "overall_sentiment": "正面偏多/中�?/负面偏多/严重负面",
+      "overall_sentiment": "正面偏多/中性/负面偏多/严重负面",
       "common_complaints": ["常见投诉1"],
       "highlights": ["正面评价1"],
       "assessment": "评估说明",
-      "score": 1-5风险�?
+      "score": 1-5风险分
     }},
     "jd_analysis": {{
       "overtime_risk": "low/medium/high",
@@ -146,57 +146,57 @@ RISK_ASSESSMENT_PROMPT = """你是一位企业风险评估专家。请综合以�
       "kpi_brushing_suspicion": "low/medium/high",
       "salary_authenticity": "评估",
       "assessment": "评估说明",
-      "score": 1-5风险�?
+      "score": 1-5风险分
     }},
     "match_with_user": {{
-      "skill_match": "匹配度描�?",
-      "salary_match": "匹配度描�?",
-      "location_match": "匹配度描�?",
+      "skill_match": "匹配度描述",
+      "salary_match": "匹配度描述",
+      "location_match": "匹配度描述",
       "intensity_match": "是否匹配用户工作强度偏好",
-      "score": 1-5匹配分（5=最匹配�?
+      "score": 1-5匹配分（5=最匹配）
     }}
   }},
-  "overall_score": 综合风险�? 0-10�?0=最安全�?,
-  "summary": "综合评估总结�?2-3句话�?",
+  "overall_score": 综合风险分 0-10（0=最安全）,
+  "summary": "综合评估总结（2-3句话）",
   "red_flags": ["需要警惕的红旗信号"],
-  "positive_points": ["值得考虑的亮�?"],
+  "positive_points": ["值得考虑的亮点"],
   "advice": "给用户的个性化建议"
 }}
 ```
 
-只输�? JSON�?"""
+只输出 JSON。"""
 
 
 # 阶段 3：生成用户友好的分析报告
-REPORT_GENERATION_PROMPT = """你是一位贴心的求职顾问。请将以下企业背调结果转化为用户友好的分析报告�?
+REPORT_GENERATION_PROMPT = """你是一位贴心的求职顾问。请将以下企业背调结果转化为用户友好的分析报告。
 
 ## 分析结果
 {assessment_json}
 
 ## 要求
-- 用平易近人的语言，像朋友在帮你分析一�?
+- 用平易近人的语言，像朋友在帮你分析一样
 - 突出最重要的风险和亮点
-- 给出明确的投递建�?
-- 如果风险高，解释清楚为什�?
-- 如果值得投，说明为什�?
+- 给出明确的投递建议
+- 如果风险高，解释清楚为什么
+- 如果值得投，说明为什么
 
 ## 输出格式
-�? Markdown 格式输出，包含：
-1. 📊 综合评分（推荐指数：⭐×N�?
+用 Markdown 格式输出，包含：
+1. 📊 综合评分（推荐指数：⭐×N）
 2. ⚠️ 风险提示（如有）
-3. �? 亮点（如有）
-4. 📋 详细分析（社�?/法律/口碑/JD�?
-5. 💡 投递建�?
+3. ✅ 亮点（如有）
+4. 📋 详细分析（社保/法律/口碑/JD）
+5. 💡 投递建议
 
-直接输出报告内容，不需�? JSON�?"""
+直接输出报告内容，不需要 JSON。"""
 
 
-# ─── Agent 核心�? ────────────────────────────────────────────────────────
+# ─── Agent 核心类 ────────────────────────────────────────────────────────
 
 class BackgroundCheckAgent:
     """企业背调 Agent"""
 
-    # ─── 主入�? ───────────────────────────────────────────────────────
+    # ─── 主入口 ───────────────────────────────────────────────────────
 
     async def investigate(
         self,
@@ -205,26 +205,26 @@ class BackgroundCheckAgent:
         web_search_func=None,  # WebSearch 回调函数（由调用方注入）
     ) -> dict:
         """
-        对企�?/岗位进行全面背调
+        对企业/岗位进行全面背调
 
         Args:
             job_info: 岗位解析 Agent 输出的结构化岗位信息
-            user_profile: 用户画像（用于个性化评估�?
+            user_profile: 用户画像（用于个性化评估）
             web_search_func: WebSearch 回调函数 async def(query) -> str
 
         Returns:
-            完整的风险评估报�? dict
+            完整的风险评估报告 dict
         """
         company_name = job_info.get("company_name", "未知企业")
         job_title = job_info.get("job_title", "未知岗位")
         logger.info(f"[BackgroundCheck] 开始背调：{company_name} - {job_title}")
 
-        # 1. 先查知识库（历史分析记录�?
+        # 1. 先查知识库（历史分析记录）
         kb_results = await self._search_knowledge_base(company_name, job_title)
 
         # 2. JD 话术分析（主力模型，快）
         jd_analysis = await self._analyze_jd(job_info)
-        logger.info(f"[BackgroundCheck] JD分析完成，加班风�?={jd_analysis.get('overtime_risk')}")
+        logger.info(f"[BackgroundCheck] JD分析完成，加班风险={jd_analysis.get('overtime_risk')}")
 
         # 3. 实时检索企业公开信息 + 网络口碑（并行）
         company_info = ""
@@ -232,25 +232,25 @@ class BackgroundCheckAgent:
 
         if web_search_func:
             try:
-                # 并行检�?
+                # 并行检索
                 company_info = await self._search_company_info(company_name, web_search_func)
                 online_reputation = await self._search_reputation(company_name, web_search_func)
             except Exception as e:
-                logger.warning(f"[BackgroundCheck] WebSearch 检索失�?: {e}")
+                logger.warning(f"[BackgroundCheck] WebSearch 检索失败: {e}")
 
-        # 4. 综合风险评估（DeepSeek V3 推理�?
+        # 4. 综合风险评估（DeepSeek V3 推理）
         assessment = await self._assess_risk(
             job_info, jd_analysis, company_info, online_reputation, user_profile
         )
-        logger.info(f"[BackgroundCheck] 风险评估完成，等�?={assessment.get('risk_level')}")
+        logger.info(f"[BackgroundCheck] 风险评估完成，等级={assessment.get('risk_level')}")
 
-        # 5. 合并知识库数据（实时结果优先�?
+        # 5. 合并知识库数据（实时结果优先）
         assessment = self._merge_with_kb(assessment, kb_results)
 
-        # 6. 生成用户友好的报�?
+        # 6. 生成用户友好的报告
         report = await self._generate_report(assessment)
 
-        # 7. 存入知识�?
+        # 7. 存入知识库
         await self._save_to_kb(company_name, job_title, assessment, report)
 
         return {
@@ -277,7 +277,7 @@ class BackgroundCheckAgent:
         if salary_min and salary_max:
             salary_str = f"{salary_min}-{salary_max}"
         else:
-            salary_str = "未标�?"
+            salary_str = "未标注"
 
         prompt = JD_ANALYSIS_PROMPT.format(
             company_name=job_info.get("company_name", "未知"),
@@ -290,7 +290,7 @@ class BackgroundCheckAgent:
         )
 
         messages = [
-            {"role": "system", "content": "你是一个精确的 JSON 输出引擎�?"},
+            {"role": "system", "content": "你是一个精确的 JSON 输出引擎。"},
             {"role": "user", "content": prompt},
         ]
 
@@ -307,12 +307,12 @@ class BackgroundCheckAgent:
                 "kpi_brushing_suspicion": "low",
             }
 
-    # ─── 企业信息检�? ────────────────────────────────────────────────
+    # ─── 企业信息检索 ────────────────────────────────────────────────
 
     async def _search_company_info(self, company_name: str, web_search_func) -> str:
         """检索企业公开信息"""
         queries = [
-            f"{company_name} 公司 社保人数 参保人数 天眼�?",
+            f"{company_name} 公司 社保人数 参保人数 天眼查",
             f"{company_name} 劳动仲裁 劳动争议 裁判文书",
             f"{company_name} 经营异常 行政处罚 工商信息",
         ]
@@ -324,16 +324,16 @@ class BackgroundCheckAgent:
                 if result:
                     results.append(result)
             except Exception as e:
-                logger.warning(f"[BackgroundCheck] 检索失�? '{query}': {e}")
+                logger.warning(f"[BackgroundCheck] 检索失败 '{query}': {e}")
 
         return "\n---\n".join(results) if results else "未获取到企业公开信息"
 
     async def _search_reputation(self, company_name: str, web_search_func) -> str:
-        """检索网络口�?"""
+        """检索网络口碑"""
         queries = [
-            f"{company_name} 员工评价 工作体验 怎么�? 脉脉 看准�?",
-            f"{company_name} 知乎 小红�? 加班 工资 待遇",
-            f"{company_name} 招聘 靠谱�? 值得去吗",
+            f"{company_name} 员工评价 工作体验 怎么样 脉脉 看准网",
+            f"{company_name} 知乎 小红书 加班 工资 待遇",
+            f"{company_name} 招聘 靠谱吗 值得去吗",
         ]
 
         results = []
@@ -343,7 +343,7 @@ class BackgroundCheckAgent:
                 if result:
                     results.append(result)
             except Exception as e:
-                logger.warning(f"[BackgroundCheck] 检索失�? '{query}': {e}")
+                logger.warning(f"[BackgroundCheck] 检索失败 '{query}': {e}")
 
         return "\n---\n".join(results) if results else "未获取到网络口碑信息"
 
@@ -358,8 +358,8 @@ class BackgroundCheckAgent:
         user_profile: Optional[dict] = None,
     ) -> dict:
         """使用 DeepSeek V3 进行综合风险评估"""
-        # 格式化用户画�?
-        user_profile_str = "未提供用户画�?"
+        # 格式化用户画像
+        user_profile_str = "未提供用户画像"
         if user_profile:
             basic = user_profile.get("basic", {})
             prefs = user_profile.get("preferences", {})
@@ -367,21 +367,21 @@ class BackgroundCheckAgent:
                 "学历": basic.get("degree"),
                 "期望薪资": f"{basic.get('expected_salary_min', 0)}-{basic.get('expected_salary_max', 0)}",
                 "偏好城市": prefs.get("preferred_locations", []),
-                "周末偏好": prefs.get("weekend_preference", "未设�?"),
-                "加班接受�?": prefs.get("overtime_tolerance", "未设�?"),
-                "劳动强度": prefs.get("labor_intensity", "未设�?"),
+                "周末偏好": prefs.get("weekend_preference", "未设置"),
+                "加班接受度": prefs.get("overtime_tolerance", "未设置"),
+                "劳动强度": prefs.get("labor_intensity", "未设置"),
             }, ensure_ascii=False)
 
         prompt = RISK_ASSESSMENT_PROMPT.format(
             job_info=json.dumps(job_info, ensure_ascii=False, indent=2)[:2000],
             jd_analysis=json.dumps(jd_analysis, ensure_ascii=False, indent=2),
-            company_info=company_info[:3000] if company_info else "未获�?",
-            online_reputation=online_reputation[:3000] if online_reputation else "未获�?",
+            company_info=company_info[:3000] if company_info else "未获取",
+            online_reputation=online_reputation[:3000] if online_reputation else "未获取",
             user_profile=user_profile_str,
         )
 
         messages = [
-            {"role": "system", "content": "你是一位企业风险评估专家。只输出 JSON�?"},
+            {"role": "system", "content": "你是一位企业风险评估专家。只输出 JSON。"},
             {"role": "user", "content": prompt},
         ]
 
@@ -393,25 +393,25 @@ class BackgroundCheckAgent:
             return {
                 "risk_level": "medium",
                 "recommendation_index": 3,
-                "recommendation_text": "信息不足，建议进一步了�?",
+                "recommendation_text": "信息不足，建议进一步了解",
                 "dimensions": {},
                 "overall_score": 5,
-                "summary": "由于信息获取不完整，无法给出准确评估�?",
+                "summary": "由于信息获取不完整，无法给出准确评估。",
                 "red_flags": [],
                 "positive_points": [],
-                "advice": "建议通过更多渠道了解该公司信息后再做决定�?",
+                "advice": "建议通过更多渠道了解该公司信息后再做决定。",
             }
 
     # ─── 生成用户报告 ────────────────────────────────────────────────
 
     async def _generate_report(self, assessment: dict) -> str:
-        """生成用户友好的分析报�?"""
+        """生成用户友好的分析报告"""
         prompt = REPORT_GENERATION_PROMPT.format(
             assessment_json=json.dumps(assessment, ensure_ascii=False, indent=2),
         )
 
         messages = [
-            {"role": "system", "content": "你是一位贴心的求职顾问，用平易近人的语言给出分析报告�?"},
+            {"role": "system", "content": "你是一位贴心的求职顾问，用平易近人的语言给出分析报告。"},
             {"role": "user", "content": prompt},
         ]
 
@@ -422,11 +422,11 @@ class BackgroundCheckAgent:
             return self._generate_fallback_report(assessment)
 
     def _generate_fallback_report(self, assessment: dict) -> str:
-        """生成降级报告（LLM 不可用时�?"""
-        stars = "�?" * assessment.get("recommendation_index", 3)
+        """生成降级报告（LLM 不可用时）"""
+        stars = "⭐" * assessment.get("recommendation_index", 3)
         risk_level = assessment.get("risk_level", "unknown")
-        risk_map = {"low": "🟢 低风�?", "medium": "🟡 中等风险", "high": "🟠 高风�?", "critical": "🔴 严重风险"}
-        risk_text = risk_map.get(risk_level, "�? 未知")
+        risk_map = {"low": "🟢 低风险", "medium": "🟡 中等风险", "high": "🟠 高风险", "critical": "🔴 严重风险"}
+        risk_text = risk_map.get(risk_level, "⚪ 未知")
 
         lines = [
             f"## 📊 综合评分\n\n推荐指数：{stars}\n\n风险等级：{risk_text}\n",
@@ -441,7 +441,7 @@ class BackgroundCheckAgent:
 
         positive = assessment.get("positive_points", [])
         if positive:
-            lines.append("\n## �? 亮点\n")
+            lines.append("\n## ✅ 亮点\n")
             for p in positive:
                 lines.append(f"- {p}")
 
@@ -451,15 +451,15 @@ class BackgroundCheckAgent:
 
         return "\n".join(lines)
 
-    # ─── 知识库操�? ──────────────────────────────────────────────────
+    # ─── 知识库操作 ──────────────────────────────────────────────────
 
     async def _search_knowledge_base(self, company_name: str, job_title: str) -> list[dict]:
-        """从知识库检索历史分析记�?"""
+        """从知识库检索历史分析记录"""
         try:
             query = f"{company_name} {job_title} 风险评估 企业背调"
             return await company_kb.search(query, company_name=company_name, top_k=3)
         except Exception as e:
-            logger.warning(f"[BackgroundCheck] 知识库检索失�?: {e}")
+            logger.warning(f"[BackgroundCheck] 知识库检索失败: {e}")
             return []
 
     async def _save_to_kb(
@@ -479,12 +479,12 @@ class BackgroundCheckAgent:
             )
             logger.info(f"[BackgroundCheck] 已存入知识库: {company_name}")
         except Exception as e:
-            logger.warning(f"[BackgroundCheck] 知识库存储失�?: {e}")
+            logger.warning(f"[BackgroundCheck] 知识库存储失败: {e}")
 
     def _merge_with_kb(self, assessment: dict, kb_results: list[dict]) -> dict:
         """
-        合并知识库数据（实时结果优先�?
-        知识库数据作为参考，不覆盖实时结�?
+        合并知识库数据（实时结果优先）
+        知识库数据作为参考，不覆盖实时结果
         """
         if not kb_results:
             return assessment
@@ -501,7 +501,7 @@ class BackgroundCheckAgent:
             assessment.setdefault("kb_reference", {
                 "risk_level": kb_risk.get("risk_level"),
                 "recommendation_index": kb_risk.get("recommendation_index"),
-                "note": "以下信息来自历史分析记录，仅供参考（实时数据优先�?",
+                "note": "以下信息来自历史分析记录，仅供参考（实时数据优先）",
             })
 
         return assessment
@@ -510,7 +510,7 @@ class BackgroundCheckAgent:
 
     @staticmethod
     def _clean_json(text: str) -> str:
-        """清理 LLM 返回�? JSON 文本"""
+        """清理 LLM 返回的 JSON 文本"""
         text = text.strip()
         if text.startswith("```json"):
             text = text[7:]
