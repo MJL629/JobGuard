@@ -30,3 +30,6 @@ frontend/dist/
 
 # 上传文件
 uploads/
+
+# Chroma runtime data
+backend/data/chroma/
