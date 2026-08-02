@@ -1,0 +1,2748 @@
+[
+  {
+    "user_id": "u001",
+    "username": "zhangwei",
+    "email": "zhangwei@qq.com",
+    "full_name": "张伟",
+    "gender": "男",
+    "birth_year": 2000,
+    "degree": "硕士",
+    "major": "计算机科学与技术",
+    "school": "清华大学",
+    "graduation_year": 2026,
+    "current_city": "北京",
+    "expected_salary_min": 28000,
+    "expected_salary_max": 35000,
+    "years_of_experience": 0,
+    "skills": [
+      {
+        "skill_name": "Java",
+        "proficiency": "精通",
+        "category": "编程语言"
+      },
+      {
+        "skill_name": "Python",
+        "proficiency": "熟练",
+        "category": "编程语言"
+      },
+      {
+        "skill_name": "Spring Boot",
+        "proficiency": "精通",
+        "category": "框架"
+      },
+      {
+        "skill_name": "MySQL",
+        "proficiency": "精通",
+        "category": "数据库"
+      },
+      {
+        "skill_name": "Redis",
+        "proficiency": "熟练",
+        "category": "中间件"
+      },
+      {
+        "skill_name": "Kafka",
+        "proficiency": "熟练",
+        "category": "中间件"
+      },
+      {
+        "skill_name": "Docker",
+        "proficiency": "了解",
+        "category": "运维工具"
+      },
+      {
+        "skill_name": "微服务架构",
+        "proficiency": "熟练",
+        "category": "架构设计"
+      }
+    ],
+    "education": [
+      {
+        "school": "清华大学",
+        "major": "计算机科学与技术",
+        "degree": "硕士",
+        "start_year": 2024,
+        "end_year": 2026,
+        "gpa": "3.8/4.0",
+        "honors": "国家奖学金"
+      },
+      {
+        "school": "北京航空航天大学",
+        "major": "软件工程",
+        "degree": "本科",
+        "start_year": 2020,
+        "end_year": 2024,
+        "gpa": "3.7/4.0",
+        "honors": "校级优秀毕业生"
+      }
+    ],
+    "projects": [
+      {
+        "project_name": "电商平台订单中心微服务化改造",
+        "role": "核心开发者",
+        "description": "在某头部电商实习期间，参与订单中心从单体架构向微服务架构的迁移。使用Spring Cloud Alibaba技术栈，基于Nacos实现服务注册与配置管理，通过Sentinel完成限流熔断，利用Seata保证分布式事务一致性。独立负责订单状态机模块的设计与开发，将订单全生命周期管理拆分为创建、支付、发货、签收等6个独立状态节点，日均处理订单量达到50万+。改造后系统可用性从99.9%提升至99.99%，接口P99延迟从800ms降低至200ms。",
+        "tech_stack": [
+          "Java",
+          "Spring Cloud Alibaba",
+          "Nacos",
+          "Sentinel",
+          "Seata",
+          "MySQL",
+          "Redis",
+          "Kafka"
+        ],
+        "start_date": "2025-06",
+        "end_date": "2025-12",
+        "highlights": "主导订单状态机模块，系统可用性提升至99.99%"
+      },
+      {
+        "project_name": "分布式任务调度平台",
+        "role": "独立开发者",
+        "description": "硕士期间独立完成的课程大作业，设计并实现了一个轻量级分布式任务调度系统。系统基于Quartz调度框架进行二次开发，支持Cron表达式和固定频率两种触发方式，实现了任务分片、故障转移和执行日志追踪功能。后端使用Spring Boot构建RESTful API，前端采用Vue3+Element Plus实现管理控制台。通过MySQL存储任务元数据，使用Redis分布式锁保证多节点下任务不会被重复执行。在模拟环境中完成100节点、1000并发任务的压测，任务调度延迟控制在50ms以内。",
+        "tech_stack": [
+          "Java",
+          "Spring Boot",
+          "Quartz",
+          "Vue3",
+          "MySQL",
+          "Redis",
+          "Docker"
+        ],
+        "start_date": "2024-09",
+        "end_date": "2025-01",
+        "highlights": "100节点1000并发任务压测，调度延迟<50ms"
+      }
+    ],
+    "preferences": {
+      "preferred_job_types": [
+        "后端开发工程师"
+      ],
+      "preferred_sub_categories": [
+        "Java后端"
+      ],
+      "preferred_locations": [
+        "北京",
+        "上海",
+        "杭州"
+      ],
+      "preferred_industries": [
+        "互联网",
+        "金融科技"
+      ],
+      "overtime_tolerance": "可接受适量加班",
+      "weekend_preference": "双休",
+      "holiday_preference": "法定节假日",
+      "labor_intensity": "中等强度",
+      "remote_work": "支持混合办公",
+      "company_scale_pref": "大型企业"
+    },
+    "resume_raw_text": "清华大学计算机科学与技术硕士应届毕业生，本科就读于北京航空航天大学软件工程专业。精通Java和Spring生态，具备电商平台微服务化实战经验，主导过日均50万订单量系统的架构升级。熟悉分布式系统设计，有独立开发分布式任务调度平台的经验。获得国家奖学金，具备扎实的计算机基础和优秀的工程能力。期望在北京、上海或杭州从事Java后端开发工作。"
+  },
+  {
+    "user_id": "u002",
+    "username": "wangfang",
+    "email": "wangfang@163.com",
+    "full_name": "王芳",
+    "gender": "女",
+    "birth_year": 2001,
+    "degree": "硕士",
+    "major": "计算机科学与技术",
+    "school": "浙江大学",
+    "graduation_year": 2026,
+    "current_city": "杭州",
+    "expected_salary_min": 25000,
+    "expected_salary_max": 32000,
+    "years_of_experience": 0,
+    "skills": [
+      {
+        "skill_name": "Go",
+        "proficiency": "精通",
+        "category": "编程语言"
+      },
+      {
+        "skill_name": "Python",
+        "proficiency": "熟练",
+        "category": "编程语言"
+      },
+      {
+        "skill_name": "Gin",
+        "proficiency": "精通",
+        "category": "框架"
+      },
+      {
+        "skill_name": "gRPC",
+        "proficiency": "熟练",
+        "category": "通信协议"
+      },
+      {
+        "skill_name": "MySQL",
+        "proficiency": "熟练",
+        "category": "数据库"
+      },
+      {
+        "skill_name": "Redis",
+        "proficiency": "熟练",
+        "category": "中间件"
+      },
+      {
+        "skill_name": "Kubernetes",
+        "proficiency": "了解",
+        "category": "运维工具"
+      },
+      {
+        "skill_name": "消息队列",
+        "proficiency": "熟练",
+        "category": "中间件"
+      }
+    ],
+    "education": [
+      {
+        "school": "浙江大学",
+        "major": "计算机科学与技术",
+        "degree": "硕士",
+        "start_year": 2024,
+        "end_year": 2026,
+        "gpa": "3.7/4.0",
+        "honors": "浙江省优秀研究生"
+      },
+      {
+        "school": "浙江大学",
+        "major": "软件工程",
+        "degree": "本科",
+        "start_year": 2020,
+        "end_year": 2024,
+        "gpa": "3.6/4.0",
+        "honors": "校级奖学金"
+      }
+    ],
+    "projects": [
+      {
+        "project_name": "即时通讯服务端架构设计与实现",
+        "role": "后端开发",
+        "description": "在某社交平台实习期间，参与即时通讯服务端从Python向Go的重构。基于Gin框架搭建HTTP接入层，使用gRPC实现内部服务通信，通过WebSocket长连接维持客户端实时消息推送。独立负责消息可靠性投递模块，设计了基于消息ID的去重机制和ACK确认重传策略，将消息到达率从98.5%提升至99.99%。引入Redis Stream作为消息缓冲队列，单机支持10万并发长连接。重构后服务CPU使用率降低60%，内存占用减少45%。",
+        "tech_stack": [
+          "Go",
+          "Gin",
+          "gRPC",
+          "WebSocket",
+          "Redis Stream",
+          "MySQL",
+          "Kubernetes"
+        ],
+        "start_date": "2025-07",
+        "end_date": "2025-12",
+        "highlights": "消息到达率提升至99.99%，单机10万并发连接"
+      },
+      {
+        "project_name": "容器化CI/CD流水线平台",
+        "role": "项目负责人",
+        "description": "硕士期间与实验室同学合作开发的项目，旨在为校内多个课题组提供统一的持续集成与部署服务。后端使用Go语言开发，基于Docker SDK实现镜像构建与容器管理，通过Kubernetes Client-Go调用集群API完成服务部署和滚动更新。设计了一套Pipeline DSL语法，支持并行Stage和条件分支，用户可通过YAML文件定义流水线。前端使用React+Ant Design提供可视化编排界面。项目部署在实验室自建K8s集群上，已为5个课题组提供超过200次构建服务。",
+        "tech_stack": [
+          "Go",
+          "Kubernetes",
+          "Docker",
+          "React",
+          "Ant Design",
+          "GitLab API",
+          "Prometheus"
+        ],
+        "start_date": "2024-11",
+        "end_date": "2025-05",
+        "highlights": "自研Pipeline DSL，服务5个课题组200+次构建"
+      }
+    ],
+    "preferences": {
+      "preferred_job_types": [
+        "后端开发工程师"
+      ],
+      "preferred_sub_categories": [
+        "Go后端"
+      ],
+      "preferred_locations": [
+        "杭州",
+        "上海",
+        "北京"
+      ],
+      "preferred_industries": [
+        "互联网",
+        "云计算"
+      ],
+      "overtime_tolerance": "可接受适量加班",
+      "weekend_preference": "双休",
+      "holiday_preference": "法定节假日",
+      "labor_intensity": "中等强度",
+      "remote_work": "支持混合办公",
+      "company_scale_pref": "中大型企业"
+    },
+    "resume_raw_text": "浙江大学计算机科学与技术硕士，本硕均就读于浙大。精通Go语言开发，有即时通讯服务端重构和容器化CI/CD平台开发经验。主导的消息可靠性模块将到达率提升至99.99%，单机支持10万并发连接。熟悉Kubernetes生态和云原生技术栈，具备独立设计和实现后端系统架构的能力。期望在杭州、上海从事Go后端开发工作。"
+  },
+  {
+    "user_id": "u003",
+    "username": "liming",
+    "email": "liming@qq.com",
+    "full_name": "李明",
+    "gender": "男",
+    "birth_year": 2000,
+    "degree": "硕士",
+    "major": "人工智能",
+    "school": "北京大学",
+    "graduation_year": 2026,
+    "current_city": "北京",
+    "expected_salary_min": 30000,
+    "expected_salary_max": 40000,
+    "years_of_experience": 0,
+    "skills": [
+      {
+        "skill_name": "Python",
+        "proficiency": "精通",
+        "category": "编程语言"
+      },
+      {
+        "skill_name": "PyTorch",
+        "proficiency": "精通",
+        "category": "深度学习框架"
+      },
+      {
+        "skill_name": "Transformers",
+        "proficiency": "精通",
+        "category": "模型库"
+      },
+      {
+        "skill_name": "CUDA",
+        "proficiency": "熟练",
+        "category": "GPU编程"
+      },
+      {
+        "skill_name": "LangChain",
+        "proficiency": "熟练",
+        "category": "应用框架"
+      },
+      {
+        "skill_name": "Docker",
+        "proficiency": "熟练",
+        "category": "运维工具"
+      },
+      {
+        "skill_name": "RAG",
+        "proficiency": "熟练",
+        "category": "技术方案"
+      },
+      {
+        "skill_name": "Prompt Engineering",
+        "proficiency": "精通",
+        "category": "技能"
+      }
+    ],
+    "education": [
+      {
+        "school": "北京大学",
+        "major": "人工智能",
+        "degree": "硕士",
+        "start_year": 2024,
+        "end_year": 2026,
+        "gpa": "3.9/4.0",
+        "honors": "校长奖学金"
+      },
+      {
+        "school": "华中科技大学",
+        "major": "计算机科学与技术",
+        "degree": "本科",
+        "start_year": 2020,
+        "end_year": 2024,
+        "gpa": "3.8/4.0",
+        "honors": "国家奖学金"
+      }
+    ],
+    "projects": [
+      {
+        "project_name": "企业级知识库问答系统",
+        "role": "算法实习生",
+        "description": "在某AI独角兽公司实习期间，参与企业知识库智能问答系统的开发。负责RAG（检索增强生成）管道的优化，设计了基于BERT的双塔模型进行文档召回，在内部评测集上召回率从82%提升至94%。针对长文档场景实现层次化分块策略，结合BM25和语义向量进行混合检索。使用LangChain编排Agent工作流，支持多轮对话中的上下文管理和工具调用。系统上线后服务于3家企业客户，日均问答量超过5000次，回答准确率达到91%。",
+        "tech_stack": [
+          "Python",
+          "PyTorch",
+          "LangChain",
+          "BERT",
+          "Milvus",
+          "FastAPI",
+          "Redis",
+          "Docker"
+        ],
+        "start_date": "2025-06",
+        "end_date": "2025-12",
+        "highlights": "召回率从82%提升至94%，日均5000+问答"
+      },
+      {
+        "project_name": "中文大模型指令微调研究",
+        "role": "核心研究者",
+        "description": "硕士期间参与的学术研究项目，聚焦中文大语言模型的指令微调技术。基于LLaMA模型架构，在自建的10万条高质量中文指令数据集上进行SFT微调。针对中文特有的语义歧义问题，提出了一种基于对比学习的训练策略，在C-Eval和CMMLU评测基准上分别提升了3.2和2.8个百分点。使用DeepSpeed ZeRO-3策略在4卡A100集群上完成训练，微调后的7B模型在中文理解任务上达到同规模模型SOTA水平。论文已投稿至ACL 2026。",
+        "tech_stack": [
+          "Python",
+          "PyTorch",
+          "DeepSpeed",
+          "Transformers",
+          "LLaMA",
+          "A100 GPU",
+          "Wandb"
+        ],
+        "start_date": "2024-09",
+        "end_date": "2025-06",
+        "highlights": "C-Eval提升3.2pp，论文投稿ACL 2026"
+      }
+    ],
+    "preferences": {
+      "preferred_job_types": [
+        "算法工程师",
+        "大模型应用开发工程师"
+      ],
+      "preferred_sub_categories": [
+        "NLP/大模型"
+      ],
+      "preferred_locations": [
+        "北京",
+        "上海",
+        "深圳"
+      ],
+      "preferred_industries": [
+        "人工智能",
+        "互联网"
+      ],
+      "overtime_tolerance": "可接受适量加班",
+      "weekend_preference": "双休",
+      "holiday_preference": "法定节假日",
+      "labor_intensity": "高强度可接受",
+      "remote_work": "支持混合办公",
+      "company_scale_pref": "大型企业"
+    },
+    "resume_raw_text": "北京大学人工智能硕士，本科毕业于华中科技大学。研究方向为大语言模型与自然语言处理，精通PyTorch和Transformers生态。有企业级RAG问答系统开发经验，独立优化召回管道使召回率提升12个百分点。主导过中文大模型指令微调研究项目，成果投稿ACL 2026。期望在北京、上海从事NLP/大模型方向的算法或应用开发工作。"
+  },
+  {
+    "user_id": "u004",
+    "username": "liuqiang",
+    "email": "liuqiang@gmail.com",
+    "full_name": "刘强",
+    "gender": "男",
+    "birth_year": 1999,
+    "degree": "硕士",
+    "major": "计算机科学",
+    "school": "Carnegie Mellon University",
+    "graduation_year": 2026,
+    "current_city": "上海",
+    "expected_salary_min": 28000,
+    "expected_salary_max": 35000,
+    "years_of_experience": 0,
+    "skills": [
+      {
+        "skill_name": "Python",
+        "proficiency": "精通",
+        "category": "编程语言"
+      },
+      {
+        "skill_name": "C++",
+        "proficiency": "熟练",
+        "category": "编程语言"
+      },
+      {
+        "skill_name": "PyTorch",
+        "proficiency": "精通",
+        "category": "深度学习框架"
+      },
+      {
+        "skill_name": "TensorFlow",
+        "proficiency": "熟练",
+        "category": "深度学习框架"
+      },
+      {
+        "skill_name": "推荐算法",
+        "proficiency": "精通",
+        "category": "算法"
+      },
+      {
+        "skill_name": "Spark",
+        "proficiency": "熟练",
+        "category": "大数据"
+      },
+      {
+        "skill_name": "SQL",
+        "proficiency": "精通",
+        "category": "数据库"
+      },
+      {
+        "skill_name": "A/B Testing",
+        "proficiency": "熟练",
+        "category": "实验方法"
+      }
+    ],
+    "education": [
+      {
+        "school": "Carnegie Mellon University",
+        "major": "计算机科学",
+        "degree": "硕士",
+        "start_year": 2024,
+        "end_year": 2026,
+        "gpa": "3.8/4.0",
+        "honors": "Dean's List"
+      },
+      {
+        "school": "上海交通大学",
+        "major": "计算机科学与技术",
+        "degree": "本科",
+        "start_year": 2018,
+        "end_year": 2022,
+        "gpa": "3.7/4.0",
+        "honors": "上海市优秀毕业生"
+      }
+    ],
+    "projects": [
+      {
+        "project_name": "短视频推荐系统召回与排序优化",
+        "role": "推荐算法工程师",
+        "description": "在某头部短视频平台工作期间，负责推荐系统召回通道的优化。针对用户冷启动场景，设计了基于图神经网络的跨域兴趣迁移模型，利用用户在其他内容域的互动行为辅助新用户的兴趣建模。模型上线后冷启动用户次日留存率提升8.3%。同时参与排序模型迭代，将多任务学习（MMOE架构）应用于点击率和观看时长联合预估，通过动态权重调整策略平衡短期点击与长期留存，线上CTR提升4.7%，人均观看时长增加6.2%。",
+        "tech_stack": [
+          "Python",
+          "PyTorch",
+          "TensorFlow",
+          "Spark",
+          "Hive",
+          "Graph Neural Network",
+          "MMOE"
+        ],
+        "start_date": "2025-06",
+        "end_date": "2025-12",
+        "highlights": "冷启动用户留存+8.3%，CTR+4.7%，时长+6.2%"
+      },
+      {
+        "project_name": "基于强化学习的序列推荐研究",
+        "role": "主要研究者",
+        "description": "CMU硕士期间的毕业研究课题，探索将强化学习应用于电商场景的序列化推荐。将推荐过程建模为马尔可夫决策过程，用户状态由历史行为序列的GRU编码表示，使用Actor-Critic算法学习推荐策略。在Amazon和淘宝两个公开数据集上进行实验，相比传统协同过滤和序列模型（SASRec），长期累积奖励指标NDCG@20提升12.5%。创新性地引入反事实推理框架评估策略的离线效果，解决了推荐系统中策略评估偏差问题。论文发表于RecSys 2025 Workshop。",
+        "tech_stack": [
+          "Python",
+          "PyTorch",
+          "GRU",
+          "Actor-Critic",
+          "Reinforcement Learning",
+          "SASRec",
+          "Counterfactual"
+        ],
+        "start_date": "2024-09",
+        "end_date": "2025-06",
+        "highlights": "NDCG@20提升12.5%，论文RecSys Workshop发表"
+      }
+    ],
+    "preferences": {
+      "preferred_job_types": [
+        "算法工程师",
+        "推荐系统工程师"
+      ],
+      "preferred_sub_categories": [
+        "推荐系统"
+      ],
+      "preferred_locations": [
+        "上海",
+        "北京",
+        "深圳"
+      ],
+      "preferred_industries": [
+        "互联网",
+        "电子商务"
+      ],
+      "overtime_tolerance": "可接受适量加班",
+      "weekend_preference": "双休",
+      "holiday_preference": "法定节假日",
+      "labor_intensity": "中等强度",
+      "remote_work": "支持混合办公",
+      "company_scale_pref": "大型企业"
+    },
+    "resume_raw_text": "CMU计算机科学硕士，本科毕业于上海交通大学。1年头部短视频平台推荐算法经验，主导冷启动用户召回优化，留存率提升8.3%。精通PyTorch和TensorFlow，熟悉推荐系统全链路（召回、排序、重排）。硕士研究方向为强化学习在推荐系统中的应用，论文发表于RecSys Workshop。期望在上海或北京从事推荐算法相关工作。"
+  },
+  {
+    "user_id": "u005",
+    "username": "chenjing",
+    "email": "chenjing@nus.edu.sg",
+    "full_name": "陈静",
+    "gender": "女",
+    "birth_year": 1998,
+    "degree": "硕士",
+    "major": "数据科学与机器学习",
+    "school": "National University of Singapore",
+    "graduation_year": 2024,
+    "current_city": "深圳",
+    "expected_salary_min": 25000,
+    "expected_salary_max": 35000,
+    "years_of_experience": 2,
+    "skills": [
+      {
+        "skill_name": "Python",
+        "proficiency": "精通",
+        "category": "编程语言"
+      },
+      {
+        "skill_name": "SQL",
+        "proficiency": "精通",
+        "category": "数据库"
+      },
+      {
+        "skill_name": "Spark",
+        "proficiency": "熟练",
+        "category": "大数据"
+      },
+      {
+        "skill_name": "Hive",
+        "proficiency": "熟练",
+        "category": "数据仓库"
+      },
+      {
+        "skill_name": "Tableau",
+        "proficiency": "熟练",
+        "category": "可视化"
+      },
+      {
+        "skill_name": "数据建模",
+        "proficiency": "精通",
+        "category": "技能"
+      },
+      {
+        "skill_name": "A/B Testing",
+        "proficiency": "熟练",
+        "category": "实验方法"
+      },
+      {
+        "skill_name": "机器学习",
+        "proficiency": "熟练",
+        "category": "算法"
+      }
+    ],
+    "education": [
+      {
+        "school": "National University of Singapore",
+        "major": "数据科学与机器学习",
+        "degree": "硕士",
+        "start_year": 2023,
+        "end_year": 2024,
+        "gpa": "4.5/5.0",
+        "honors": "Capstone Project Distinction"
+      },
+      {
+        "school": "武汉大学",
+        "major": "信息管理与信息系统",
+        "degree": "本科",
+        "start_year": 2018,
+        "end_year": 2022,
+        "gpa": "3.6/4.0",
+        "honors": "国家奖学金"
+      }
+    ],
+    "projects": [
+      {
+        "project_name": "跨境电商用户增长分析平台",
+        "role": "高级数据分析师",
+        "description": "在某跨境电商平台担任数据分析师，主导搭建用户增长分析体系。基于Hive+Spark构建了覆盖拉新、激活、留存、变现、推荐全链路的用户行为数据宽表，数据量级达到TB级别。设计了20+核心业务指标看板，利用Tableau进行可视化呈现，帮助运营团队实现数据驱动决策。通过漏斗分析和归因模型，定位到注册转化瓶颈环节，优化后注册完成率从45%提升至62%。主导AB实验平台的数据分析模块建设，将实验结论产出周期从5天缩短至2天。",
+        "tech_stack": [
+          "Python",
+          "SQL",
+          "Spark",
+          "Hive",
+          "Tableau",
+          "Airflow",
+          "AB Testing",
+          "ClickHouse"
+        ],
+        "start_date": "2024-08",
+        "end_date": "2026-06",
+        "highlights": "注册转化率+17pp，实验周期从5天缩短至2天"
+      },
+      {
+        "project_name": "基于多源数据的城市交通流量预测",
+        "role": "项目负责人",
+        "description": "NUS硕士期间与新加坡陆路交通管理局合作的毕业项目，利用多源数据（出租车GPS轨迹、公交刷卡记录、天气数据）预测城市路网交通流量。设计了基于时空图卷积网络（ST-GCN）的预测模型，将路网建模为图结构，节点表示路段，边表示路段间连通关系。模型在15/30/60分钟三个预测窗口上的MAE指标相比基线ARIMA模型降低34%。额外整合了POI数据和节假日信息作为外部特征，进一步将预测准确率提升6%。项目成果被新加坡陆交局采纳用于交通信号灯优化调度。",
+        "tech_stack": [
+          "Python",
+          "PyTorch",
+          "Graph Neural Network",
+          "Geopandas",
+          "XGBoost",
+          "Folium",
+          "ARIMA"
+        ],
+        "start_date": "2024-01",
+        "end_date": "2024-06",
+        "highlights": "MAE降低34%，成果被新加坡陆交局采纳"
+      }
+    ],
+    "preferences": {
+      "preferred_job_types": [
+        "数据分析师",
+        "数据科学家"
+      ],
+      "preferred_sub_categories": [
+        "数据分析"
+      ],
+      "preferred_locations": [
+        "深圳",
+        "上海",
+        "北京"
+      ],
+      "preferred_industries": [
+        "互联网",
+        "电子商务",
+        "金融"
+      ],
+      "overtime_tolerance": "可接受适量加班",
+      "weekend_preference": "双休",
+      "holiday_preference": "法定节假日",
+      "labor_intensity": "中等强度",
+      "remote_work": "支持混合办公",
+      "company_scale_pref": "中大型企业"
+    },
+    "resume_raw_text": "新加坡国立大学数据科学硕士，本科毕业于武汉大学。2年跨境电商数据分析经验，主导搭建用户增长分析体系，覆盖TB级数据。精通SQL、Python和Spark生态，擅长数据建模和AB实验分析。硕士期间与新加坡陆交局合作交通流量预测项目，成果被官方采纳。期望在深圳、上海从事数据分析或数据科学工作。"
+  },
+  {
+    "user_id": "u006",
+    "username": "zhaolei",
+    "email": "zhaolei@126.com",
+    "full_name": "赵磊",
+    "gender": "男",
+    "birth_year": 1999,
+    "degree": "硕士",
+    "major": "软件工程",
+    "school": "上海交通大学",
+    "graduation_year": 2026,
+    "current_city": "上海",
+    "expected_salary_min": 22000,
+    "expected_salary_max": 30000,
+    "years_of_experience": 0,
+    "skills": [
+      {
+        "skill_name": "Python",
+        "proficiency": "精通",
+        "category": "编程语言"
+      },
+      {
+        "skill_name": "Django",
+        "proficiency": "精通",
+        "category": "框架"
+      },
+      {
+        "skill_name": "FastAPI",
+        "proficiency": "熟练",
+        "category": "框架"
+      },
+      {
+        "skill_name": "PostgreSQL",
+        "proficiency": "熟练",
+        "category": "数据库"
+      },
+      {
+        "skill_name": "Redis",
+        "proficiency": "熟练",
+        "category": "中间件"
+      },
+      {
+        "skill_name": "Celery",
+        "proficiency": "熟练",
+        "category": "任务队列"
+      },
+      {
+        "skill_name": "Docker",
+        "proficiency": "熟练",
+        "category": "运维工具"
+      },
+      {
+        "skill_name": "GraphQL",
+        "proficiency": "了解",
+        "category": "接口协议"
+      }
+    ],
+    "education": [
+      {
+        "school": "上海交通大学",
+        "major": "软件工程",
+        "degree": "硕士",
+        "start_year": 2024,
+        "end_year": 2026,
+        "gpa": "3.5/4.0",
+        "honors": "研究生学业奖学金"
+      },
+      {
+        "school": "电子科技大学",
+        "major": "软件工程",
+        "degree": "本科",
+        "start_year": 2019,
+        "end_year": 2023,
+        "gpa": "3.4/4.0",
+        "honors": "校级优秀学生"
+      }
+    ],
+    "projects": [
+      {
+        "project_name": "企业级SaaS权限管理系统",
+        "role": "Python后端开发",
+        "description": "在某企业服务SaaS公司工作期间，负责权限管理（RBAC）系统的后端开发。基于Django REST Framework构建API，实现了用户、角色、权限三层模型，支持细粒度的数据权限控制（行级和列级）。使用Celery处理异步任务如批量权限变更通知和操作日志归档，引入Redis缓存热点权限数据使接口响应时间从150ms降至30ms。设计了多租户数据隔离方案，通过PostgreSQL的Row-Level Security实现租户间数据完全隔离。系统已服务200+企业客户。",
+        "tech_stack": [
+          "Python",
+          "Django",
+          "Django REST Framework",
+          "PostgreSQL",
+          "Redis",
+          "Celery",
+          "Docker",
+          "Nginx"
+        ],
+        "start_date": "2025-06",
+        "end_date": "2025-12",
+        "highlights": "RBAC系统服务200+企业客户，接口延迟降低80%"
+      },
+      {
+        "project_name": "智能代码审查助手",
+        "role": "独立开发者",
+        "description": "硕士期间的创新实践项目，开发了一个基于大语言模型的自动化代码审查工具。后端使用FastAPI构建，通过GitHub Webhook接收Pull Request事件，调用OpenAI GPT-4 API对代码变更进行逐行审查，包括代码风格、安全漏洞、性能问题三个维度的检测。设计了基于AST的代码变更解析器，能够精准定位变更行并关联上下文。使用异步IO架构处理审查请求队列，单个PR平均审查时间在30秒内。项目在GitHub开源后获得1.2K Star，被多个小型开发团队采用。",
+        "tech_stack": [
+          "Python",
+          "FastAPI",
+          "OpenAI API",
+          "GitHub API",
+          "PostgreSQL",
+          "Redis",
+          "Docker",
+          "AST"
+        ],
+        "start_date": "2024-09",
+        "end_date": "2025-06",
+        "highlights": "GitHub 1.2K Star，被多个团队采用"
+      }
+    ],
+    "preferences": {
+      "preferred_job_types": [
+        "后端开发工程师"
+      ],
+      "preferred_sub_categories": [
+        "Python后端"
+      ],
+      "preferred_locations": [
+        "上海",
+        "杭州",
+        "苏州"
+      ],
+      "preferred_industries": [
+        "互联网",
+        "企业服务"
+      ],
+      "overtime_tolerance": "可接受适量加班",
+      "weekend_preference": "双休",
+      "holiday_preference": "法定节假日",
+      "labor_intensity": "中等强度",
+      "remote_work": "支持混合办公",
+      "company_scale_pref": "中大型企业"
+    },
+    "resume_raw_text": "上海交通大学软件工程硕士，本科毕业于电子科技大学。1年企业级SaaS后端开发经验，主导RBAC权限管理系统，服务200+企业客户。精通Python/Django生态，有异步任务和缓存优化实战经验。开源项目智能代码审查助手获得1.2K Star。期望在上海、杭州从事Python后端开发工作。"
+  },
+  {
+    "user_id": "u007",
+    "username": "sunpeng",
+    "email": "sunpeng@foxmail.com",
+    "full_name": "孙鹏",
+    "gender": "男",
+    "birth_year": 1998,
+    "degree": "硕士",
+    "major": "计算机技术",
+    "school": "东南大学",
+    "graduation_year": 2025,
+    "current_city": "南京",
+    "expected_salary_min": 18000,
+    "expected_salary_max": 25000,
+    "years_of_experience": 1,
+    "skills": [
+      {
+        "skill_name": "React",
+        "proficiency": "精通",
+        "category": "前端框架"
+      },
+      {
+        "skill_name": "TypeScript",
+        "proficiency": "精通",
+        "category": "编程语言"
+      },
+      {
+        "skill_name": "JavaScript",
+        "proficiency": "精通",
+        "category": "编程语言"
+      },
+      {
+        "skill_name": "Next.js",
+        "proficiency": "熟练",
+        "category": "前端框架"
+      },
+      {
+        "skill_name": "Node.js",
+        "proficiency": "熟练",
+        "category": "运行时"
+      },
+      {
+        "skill_name": "Tailwind CSS",
+        "proficiency": "熟练",
+        "category": "CSS框架"
+      },
+      {
+        "skill_name": "GraphQL",
+        "proficiency": "了解",
+        "category": "接口协议"
+      },
+      {
+        "skill_name": "Webpack",
+        "proficiency": "熟练",
+        "category": "构建工具"
+      }
+    ],
+    "education": [
+      {
+        "school": "东南大学",
+        "major": "计算机技术",
+        "degree": "硕士",
+        "start_year": 2023,
+        "end_year": 2025,
+        "gpa": "3.4/4.0",
+        "honors": "研究生一等奖学金"
+      },
+      {
+        "school": "南京邮电大学",
+        "major": "网络工程",
+        "degree": "本科",
+        "start_year": 2018,
+        "end_year": 2022,
+        "gpa": "3.2/4.0",
+        "honors": "优秀学生干部"
+      }
+    ],
+    "projects": [
+      {
+        "project_name": "在线协作文档平台前端架构",
+        "role": "前端开发工程师",
+        "description": "在某协同办公SaaS公司工作期间，参与在线协作文档平台的前端开发。使用React+TypeScript技术栈，基于Slate.js富文本编辑器框架开发了支持多人实时协作的文档编辑器。独立实现了OT（操作转换）算法的前端适配层，将服务端的协同操作增量与本地编辑器状态进行实时同步。通过WebSocket长连接和本地IndexedDB离线缓存，实现弱网环境下的编辑体验优化，离线编辑恢复成功率99.5%。使用React.lazy和代码分割将首屏加载时间从3.2秒优化至1.1秒。",
+        "tech_stack": [
+          "React",
+          "TypeScript",
+          "Slate.js",
+          "WebSocket",
+          "IndexedDB",
+          "OT Algorithm",
+          "Webpack",
+          "Jest"
+        ],
+        "start_date": "2025-08",
+        "end_date": "2026-06",
+        "highlights": "首屏加载3.2s→1.1s，离线恢复成功率99.5%"
+      },
+      {
+        "project_name": "可视化低代码表单搭建平台",
+        "role": "核心开发者",
+        "description": "硕士期间的毕业设计项目，开发了一个面向运营人员的可视化低代码表单搭建平台。前端基于React+TypeScript构建拖拽式编辑器，使用react-dnd实现组件拖拽，基于Zustand管理复杂的编辑器状态。设计了一套JSON Schema驱动的组件渲染引擎，支持20+种表单组件的自由组合和嵌套布局。实现了组件间的联动逻辑配置，包括显隐控制、数据校验和动态选项加载。后端使用Node.js+Express提供表单存储和发布服务。项目在校内创新大赛中获得一等奖。",
+        "tech_stack": [
+          "React",
+          "TypeScript",
+          "Zustand",
+          "react-dnd",
+          "Node.js",
+          "Express",
+          "MongoDB",
+          "Docker"
+        ],
+        "start_date": "2024-10",
+        "end_date": "2025-05",
+        "highlights": "JSON Schema驱动渲染，校内创新大赛一等奖"
+      }
+    ],
+    "preferences": {
+      "preferred_job_types": [
+        "前端开发工程师"
+      ],
+      "preferred_sub_categories": [
+        "前端React"
+      ],
+      "preferred_locations": [
+        "南京",
+        "上海",
+        "杭州"
+      ],
+      "preferred_industries": [
+        "互联网",
+        "企业服务"
+      ],
+      "overtime_tolerance": "可接受适量加班",
+      "weekend_preference": "双休",
+      "holiday_preference": "法定节假日",
+      "labor_intensity": "中等强度",
+      "remote_work": "支持混合办公",
+      "company_scale_pref": "中大型企业"
+    },
+    "resume_raw_text": "东南大学计算机技术硕士，本科毕业于南京邮电大学。1年协同办公前端开发经验，精通React/TypeScript技术栈。参与在线协作文档平台开发，独立实现OT算法前端适配，首屏加载优化至1.1秒。硕士期间开发低代码表单搭建平台获校内一等奖。期望在南京、上海从事React前端开发工作。"
+  },
+  {
+    "user_id": "u008",
+    "username": "zhoujie",
+    "email": "zhoujie@outlook.com",
+    "full_name": "周洁",
+    "gender": "女",
+    "birth_year": 2000,
+    "degree": "硕士",
+    "major": "软件工程",
+    "school": "北京邮电大学",
+    "graduation_year": 2026,
+    "current_city": "北京",
+    "expected_salary_min": 20000,
+    "expected_salary_max": 28000,
+    "years_of_experience": 0,
+    "skills": [
+      {
+        "skill_name": "Vue.js",
+        "proficiency": "精通",
+        "category": "前端框架"
+      },
+      {
+        "skill_name": "TypeScript",
+        "proficiency": "精通",
+        "category": "编程语言"
+      },
+      {
+        "skill_name": "JavaScript",
+        "proficiency": "精通",
+        "category": "编程语言"
+      },
+      {
+        "skill_name": "Nuxt.js",
+        "proficiency": "熟练",
+        "category": "前端框架"
+      },
+      {
+        "skill_name": "Element Plus",
+        "proficiency": "精通",
+        "category": "UI组件库"
+      },
+      {
+        "skill_name": "Vite",
+        "proficiency": "熟练",
+        "category": "构建工具"
+      },
+      {
+        "skill_name": "ECharts",
+        "proficiency": "熟练",
+        "category": "可视化"
+      },
+      {
+        "skill_name": "Node.js",
+        "proficiency": "了解",
+        "category": "运行时"
+      }
+    ],
+    "education": [
+      {
+        "school": "北京邮电大学",
+        "major": "软件工程",
+        "degree": "硕士",
+        "start_year": 2024,
+        "end_year": 2026,
+        "gpa": "3.5/4.0",
+        "honors": "研究生一等奖学金"
+      },
+      {
+        "school": "北京工业大学",
+        "major": "计算机科学与技术",
+        "degree": "本科",
+        "start_year": 2019,
+        "end_year": 2023,
+        "gpa": "3.3/4.0",
+        "honors": "蓝桥杯省赛二等奖"
+      }
+    ],
+    "projects": [
+      {
+        "project_name": "金融风控中台可视化系统",
+        "role": "前端开发",
+        "description": "在某金融科技公司工作期间，负责风控中台可视化系统的前端开发。基于Vue3+TypeScript+Element Plus技术栈，开发了包含实时交易监控大屏、风险指标仪表盘、策略配置管理三个核心模块。独立设计并实现了一个基于ECharts和D3.js的可复用图表组件库，涵盖折线图、热力图、桑基图等12种可视化类型，通过renderless组件模式实现逻辑与视图分离。使用WebSocket实现风控事件实时推送，大屏数据刷新延迟控制在500ms以内。系统日均PV超过3000。",
+        "tech_stack": [
+          "Vue3",
+          "TypeScript",
+          "Element Plus",
+          "ECharts",
+          "D3.js",
+          "WebSocket",
+          "Vite",
+          "Pinia"
+        ],
+        "start_date": "2025-06",
+        "end_date": "2025-12",
+        "highlights": "自研12种图表组件库，大屏延迟<500ms"
+      },
+      {
+        "project_name": "开源Vue3中后台解决方案",
+        "role": "项目发起人",
+        "description": "硕士期间发起并主导的开源项目，旨在提供一个开箱即用的Vue3中后台前端解决方案。项目基于Vue3+Vite+TypeScript构建，集成了权限管理、国际化、主题定制、Mock数据等中后台常用功能。创新性地设计了基于配置驱动的CRUD页面生成器，开发者只需编写JSON配置即可生成完整的增删改查页面。编写了100+页的使用文档和20+个最佳实践示例。项目在GitHub获得800+ Star，被200+开发者使用，NPM周下载量超过500次。",
+        "tech_stack": [
+          "Vue3",
+          "Vite",
+          "TypeScript",
+          "Pinia",
+          "Vue Router",
+          "Unocss",
+          "Vitest",
+          "Storybook"
+        ],
+        "start_date": "2024-09",
+        "end_date": "2025-06",
+        "highlights": "GitHub 800+ Star，NPM周下载500+"
+      }
+    ],
+    "preferences": {
+      "preferred_job_types": [
+        "前端开发工程师"
+      ],
+      "preferred_sub_categories": [
+        "前端Vue"
+      ],
+      "preferred_locations": [
+        "北京",
+        "上海"
+      ],
+      "preferred_industries": [
+        "互联网",
+        "金融科技"
+      ],
+      "overtime_tolerance": "可接受适量加班",
+      "weekend_preference": "双休",
+      "holiday_preference": "法定节假日",
+      "labor_intensity": "中等强度",
+      "remote_work": "支持混合办公",
+      "company_scale_pref": "中大型企业"
+    },
+    "resume_raw_text": "北京邮电大学软件工程硕士。1年金融科技前端开发经验，精通Vue3/TypeScript技术栈。主导风控中台可视化系统开发，自研12种可复用图表组件库。开源Vue3中后台解决方案获得800+ Star，注重工程化实践和代码质量。期望在北京从事Vue前端开发工作。"
+  },
+  {
+    "user_id": "u009",
+    "username": "wugang",
+    "email": "wugang@126.com",
+    "full_name": "吴刚",
+    "gender": "男",
+    "birth_year": 1999,
+    "degree": "硕士",
+    "major": "电子信息",
+    "school": "华中科技大学",
+    "graduation_year": 2026,
+    "current_city": "武汉",
+    "expected_salary_min": 20000,
+    "expected_salary_max": 28000,
+    "years_of_experience": 0,
+    "skills": [
+      {
+        "skill_name": "C++",
+        "proficiency": "精通",
+        "category": "编程语言"
+      },
+      {
+        "skill_name": "Python",
+        "proficiency": "熟练",
+        "category": "编程语言"
+      },
+      {
+        "skill_name": "PyTorch",
+        "proficiency": "熟练",
+        "category": "深度学习框架"
+      },
+      {
+        "skill_name": "OpenCV",
+        "proficiency": "熟练",
+        "category": "计算机视觉库"
+      },
+      {
+        "skill_name": "ROS",
+        "proficiency": "熟练",
+        "category": "机器人操作系统"
+      },
+      {
+        "skill_name": "TensorRT",
+        "proficiency": "了解",
+        "category": "推理优化"
+      },
+      {
+        "skill_name": "LiDAR感知",
+        "proficiency": "熟练",
+        "category": "感知算法"
+      },
+      {
+        "skill_name": "多传感器融合",
+        "proficiency": "熟练",
+        "category": "算法"
+      }
+    ],
+    "education": [
+      {
+        "school": "华中科技大学",
+        "major": "电子信息",
+        "degree": "硕士",
+        "start_year": 2024,
+        "end_year": 2026,
+        "gpa": "3.6/4.0",
+        "honors": "优秀研究生"
+      },
+      {
+        "school": "武汉理工大学",
+        "major": "自动化",
+        "degree": "本科",
+        "start_year": 2019,
+        "end_year": 2023,
+        "gpa": "3.4/4.0",
+        "honors": "全国大学生智能车竞赛二等奖"
+      }
+    ],
+    "projects": [
+      {
+        "project_name": "自动驾驶3D目标检测算法优化",
+        "role": "感知算法工程师",
+        "description": "在某自动驾驶公司担任感知算法工程师，负责3D目标检测算法的研发与优化。基于BEVFormer架构，针对激光雷达点云稀疏性问题，提出了一种多尺度特征融合策略，将高分辨率特征图与低分辨率语义特征进行跨尺度交互，在nuScenes数据集上mAP提升4.2%。独立完成了模型量化与TensorRT部署工作，将FP32模型压缩为INT8精度，推理延迟从85ms降低至28ms，成功部署在Orin平台上。参与实车路测数据采集与标注流程，积累了超过5000公里的路测数据经验。",
+        "tech_stack": [
+          "C++",
+          "Python",
+          "PyTorch",
+          "BEVFormer",
+          "TensorRT",
+          "OpenCV",
+          "nuScenes",
+          "NVIDIA Orin"
+        ],
+        "start_date": "2025-06",
+        "end_date": "2025-12",
+        "highlights": "mAP+4.2%，推理延迟85ms→28ms，Orin部署"
+      },
+      {
+        "project_name": "基于视觉SLAM的室内机器人导航",
+        "role": "核心开发者",
+        "description": "硕士期间参与的实验室项目，开发了基于视觉SLAM的室内服务机器人自主导航系统。使用ORB-SLAM3作为定位核心，结合RGB-D相机实现实时位姿估计和稠密建图。设计了基于深度强化学习的局部路径规划算法，在动态障碍物环境中实现避障成功率93%。机器人搭载Jetson Xavier NX边缘计算平台，整体系统端到端延迟控制在100ms以内。在模拟医院场景中完成药品配送任务的测试，路径规划效率相比传统A*算法提升35%。",
+        "tech_stack": [
+          "C++",
+          "Python",
+          "ROS",
+          "ORB-SLAM3",
+          "OpenCV",
+          "Reinforcement Learning",
+          "Jetson Xavier",
+          "Gazebo"
+        ],
+        "start_date": "2024-09",
+        "end_date": "2025-06",
+        "highlights": "避障成功率93%，路径效率提升35%"
+      }
+    ],
+    "preferences": {
+      "preferred_job_types": [
+        "算法工程师",
+        "感知算法工程师"
+      ],
+      "preferred_sub_categories": [
+        "CV/自动驾驶"
+      ],
+      "preferred_locations": [
+        "武汉",
+        "上海",
+        "深圳"
+      ],
+      "preferred_industries": [
+        "自动驾驶",
+        "人工智能",
+        "机器人"
+      ],
+      "overtime_tolerance": "可接受适量加班",
+      "weekend_preference": "双休",
+      "holiday_preference": "法定节假日",
+      "labor_intensity": "高强度可接受",
+      "remote_work": "不支持远程",
+      "company_scale_pref": "中大型企业"
+    },
+    "resume_raw_text": "华中科技大学电子信息硕士。1年自动驾驶感知算法经验，精通C++和PyTorch。主导3D目标检测算法优化，mAP提升4.2%，成功部署TensorRT量化模型至Orin平台。硕士期间开发视觉SLAM室内导航系统，避障成功率93%。期望在武汉、上海从事CV/自动驾驶算法工作。"
+  },
+  {
+    "user_id": "u010",
+    "username": "zhengyu",
+    "email": "zhengyu@gmail.com",
+    "full_name": "郑宇",
+    "gender": "男",
+    "birth_year": 2001,
+    "degree": "本科",
+    "major": "计算机科学与技术",
+    "school": "哈尔滨工业大学",
+    "graduation_year": 2025,
+    "current_city": "深圳",
+    "expected_salary_min": 13000,
+    "expected_salary_max": 20000,
+    "years_of_experience": 1,
+    "skills": [
+      {
+        "skill_name": "Java",
+        "proficiency": "精通",
+        "category": "编程语言"
+      },
+      {
+        "skill_name": "Kotlin",
+        "proficiency": "精通",
+        "category": "编程语言"
+      },
+      {
+        "skill_name": "Android SDK",
+        "proficiency": "精通",
+        "category": "平台SDK"
+      },
+      {
+        "skill_name": "Jetpack Compose",
+        "proficiency": "熟练",
+        "category": "UI框架"
+      },
+      {
+        "skill_name": "Retrofit",
+        "proficiency": "熟练",
+        "category": "网络库"
+      },
+      {
+        "skill_name": "Room",
+        "proficiency": "熟练",
+        "category": "数据库"
+      },
+      {
+        "skill_name": "性能优化",
+        "proficiency": "熟练",
+        "category": "技能"
+      },
+      {
+        "skill_name": "NDK",
+        "proficiency": "了解",
+        "category": "原生开发"
+      }
+    ],
+    "education": [
+      {
+        "school": "哈尔滨工业大学",
+        "major": "计算机科学与技术",
+        "degree": "本科",
+        "start_year": 2021,
+        "end_year": 2025,
+        "gpa": "3.5/4.0",
+        "honors": "优秀毕业生"
+      },
+      {
+        "school": "哈尔滨工业大学",
+        "major": "计算机科学与技术",
+        "degree": "本科",
+        "start_year": 2021,
+        "end_year": 2025,
+        "gpa": "3.5/4.0",
+        "honors": "优秀毕业生"
+      }
+    ],
+    "projects": [
+      {
+        "project_name": "短视频App性能优化与功能迭代",
+        "role": "Android开发工程师",
+        "description": "在某头部短视频公司担任Android开发，负责App核心模块的性能优化。使用Systrace和Perfetto对启动流程进行全链路分析，通过懒加载、预加载和线程调度优化，将冷启动时间从2.8秒降至1.2秒。针对视频播放场景进行了播放器内存泄漏排查，修复了3个导致OOM的关键泄漏点，App内存峰值降低35%。使用Kotlin Coroutines+Flow重构了首页Feed流的网络请求层，将数据加载成功率从96%提升至99.5%。累计处理线上Crash 200+，Crash率从0.5%降至0.05%。",
+        "tech_stack": [
+          "Java",
+          "Kotlin",
+          "Android SDK",
+          "Systrace",
+          "LeakCanary",
+          "OkHttp",
+          "Room",
+          "Glide"
+        ],
+        "start_date": "2025-07",
+        "end_date": "2026-06",
+        "highlights": "启动2.8s→1.2s，内存-35%，Crash率0.5%→0.05%"
+      },
+      {
+        "project_name": "校园二手交易平台App",
+        "role": "独立开发者",
+        "description": "本科期间独立开发的校园二手交易App，上线后校内用户突破5000人。采用MVP架构设计，使用Retrofit+RxJava进行网络请求，Glide实现图片加载与缓存。集成了百度地图SDK实现校内位置定位和交易地点展示，使用极光推送实现消息实时通知。创新性地设计了基于用户信用分的交易安全体系，通过学号认证、交易评价和举报机制三个维度计算信用分。后端使用Spring Boot+MySQL搭建RESTful API，日活用户峰值达到1200。",
+        "tech_stack": [
+          "Java",
+          "Android SDK",
+          "Retrofit",
+          "RxJava",
+          "Glide",
+          "百度地图SDK",
+          "Spring Boot",
+          "MySQL"
+        ],
+        "start_date": "2024-03",
+        "end_date": "2025-01",
+        "highlights": "校内5000+用户，日活峰值1200"
+      }
+    ],
+    "preferences": {
+      "preferred_job_types": [
+        "Android开发工程师",
+        "移动端开发工程师"
+      ],
+      "preferred_sub_categories": [
+        "Android"
+      ],
+      "preferred_locations": [
+        "深圳",
+        "北京",
+        "广州"
+      ],
+      "preferred_industries": [
+        "互联网",
+        "移动互联网"
+      ],
+      "overtime_tolerance": "可接受适量加班",
+      "weekend_preference": "双休",
+      "holiday_preference": "法定节假日",
+      "labor_intensity": "中等强度",
+      "remote_work": "支持混合办公",
+      "company_scale_pref": "中大型企业"
+    },
+    "resume_raw_text": "哈尔滨工业大学计算机本科。2年头部短视频公司Android开发经验，主导App性能优化，启动时间降至1.2秒，Crash率降至0.05%。精通Java/Kotlin，有完整的性能优化和线上问题排查经验。独立开发校园二手交易App，校内用户5000+。期望在深圳从事Android开发工作。"
+  },
+  {
+    "user_id": "u011",
+    "username": "huangli",
+    "email": "huangli@163.com",
+    "full_name": "黄丽",
+    "gender": "女",
+    "birth_year": 2000,
+    "degree": "本科",
+    "major": "软件工程",
+    "school": "西安电子科技大学",
+    "graduation_year": 2022,
+    "current_city": "西安",
+    "expected_salary_min": 15000,
+    "expected_salary_max": 22000,
+    "years_of_experience": 2,
+    "skills": [
+      {
+        "skill_name": "Swift",
+        "proficiency": "精通",
+        "category": "编程语言"
+      },
+      {
+        "skill_name": "Objective-C",
+        "proficiency": "熟练",
+        "category": "编程语言"
+      },
+      {
+        "skill_name": "SwiftUI",
+        "proficiency": "熟练",
+        "category": "UI框架"
+      },
+      {
+        "skill_name": "UIKit",
+        "proficiency": "精通",
+        "category": "UI框架"
+      },
+      {
+        "skill_name": "Core Data",
+        "proficiency": "熟练",
+        "category": "数据持久化"
+      },
+      {
+        "skill_name": "Combine",
+        "proficiency": "熟练",
+        "category": "响应式框架"
+      },
+      {
+        "skill_name": "Xcode Instruments",
+        "proficiency": "熟练",
+        "category": "性能工具"
+      },
+      {
+        "skill_name": "CI/CD",
+        "proficiency": "了解",
+        "category": "DevOps"
+      }
+    ],
+    "education": [
+      {
+        "school": "西安电子科技大学",
+        "major": "软件工程",
+        "degree": "本科",
+        "start_year": 2018,
+        "end_year": 2022,
+        "gpa": "3.4/4.0",
+        "honors": "校级奖学金"
+      }
+    ],
+    "projects": [
+      {
+        "project_name": "在线教育直播课iOS客户端",
+        "role": "iOS开发工程师",
+        "description": "在某在线教育公司担任iOS开发，负责直播课模块的开发与维护。基于WebRTC实现多人音视频互动，通过自定义视频渲染管线将直播延迟控制在200ms以内。使用Metal框架优化了白板涂鸦的渲染性能，在复杂笔触场景下帧率稳定在60fps。利用Combine+SwiftUI重构了课程列表和详情页，将页面渲染性能提升40%，代码量减少30%。独立设计了一套基于Protocol的模块化路由方案，实现15个业务模块的解耦，编译时间从5分钟降至2分钟。App在App Store评分从3.8提升至4.6。",
+        "tech_stack": [
+          "Swift",
+          "SwiftUI",
+          "Combine",
+          "WebRTC",
+          "Metal",
+          "Core Data",
+          "Xcode",
+          "GitLab CI"
+        ],
+        "start_date": "2023-08",
+        "end_date": "2026-06",
+        "highlights": "直播延迟<200ms，App Store评分3.8→4.6"
+      },
+      {
+        "project_name": "习惯养成打卡App",
+        "role": "独立开发者",
+        "description": "本科期间独立开发并上架App Store的习惯养成应用。使用UIKit+Core Data构建数据持久层，实现了习惯创建、每日打卡、统计图表和提醒通知四大功能模块。设计了基于游戏化的激励系统，包含连续打卡徽章、经验值等级和好友排行榜。使用Core Animation实现流畅的打卡动画效果，通过UNUserNotification实现灵活的提醒策略。集成HealthKit同步运动数据，支持Widget小组件展示今日打卡进度。App累计下载量超过2万次，获得App Store效率类推荐。",
+        "tech_stack": [
+          "Swift",
+          "UIKit",
+          "Core Data",
+          "Core Animation",
+          "HealthKit",
+          "WidgetKit",
+          "CloudKit",
+          "StoreKit"
+        ],
+        "start_date": "2021-06",
+        "end_date": "2022-03",
+        "highlights": "下载量2万+，获App Store效率类推荐"
+      }
+    ],
+    "preferences": {
+      "preferred_job_types": [
+        "iOS开发工程师",
+        "移动端开发工程师"
+      ],
+      "preferred_sub_categories": [
+        "iOS"
+      ],
+      "preferred_locations": [
+        "西安",
+        "北京",
+        "成都"
+      ],
+      "preferred_industries": [
+        "互联网",
+        "移动互联网"
+      ],
+      "overtime_tolerance": "可接受适量加班",
+      "weekend_preference": "双休",
+      "holiday_preference": "法定节假日",
+      "labor_intensity": "中等强度",
+      "remote_work": "支持混合办公",
+      "company_scale_pref": "中大型企业"
+    },
+    "resume_raw_text": "西安电子科技大学软件工程本科。2年在线教育iOS开发经验，主导直播课模块开发，直播延迟控制在200ms以内。精通Swift/SwiftUI/UIKit，有Metal渲染优化和模块化架构设计经验。独立开发上架习惯养成App，累计下载2万+，获App Store推荐。期望在西安、北京从事iOS开发工作。"
+  },
+  {
+    "user_id": "u012",
+    "username": "maxia",
+    "email": "maxia@qq.com",
+    "full_name": "马霞",
+    "gender": "女",
+    "birth_year": 2001,
+    "degree": "本科",
+    "major": "数据科学与大数据技术",
+    "school": "电子科技大学",
+    "graduation_year": 2025,
+    "current_city": "成都",
+    "expected_salary_min": 10000,
+    "expected_salary_max": 15000,
+    "years_of_experience": 1,
+    "skills": [
+      {
+        "skill_name": "Python",
+        "proficiency": "精通",
+        "category": "编程语言"
+      },
+      {
+        "skill_name": "SQL",
+        "proficiency": "精通",
+        "category": "数据库"
+      },
+      {
+        "skill_name": "Spark",
+        "proficiency": "熟练",
+        "category": "大数据"
+      },
+      {
+        "skill_name": "XGBoost",
+        "proficiency": "熟练",
+        "category": "机器学习"
+      },
+      {
+        "skill_name": "Hive",
+        "proficiency": "熟练",
+        "category": "数据仓库"
+      },
+      {
+        "skill_name": "特征工程",
+        "proficiency": "精通",
+        "category": "技能"
+      },
+      {
+        "skill_name": "ClickHouse",
+        "proficiency": "熟练",
+        "category": "OLAP"
+      },
+      {
+        "skill_name": "数据可视化",
+        "proficiency": "熟练",
+        "category": "技能"
+      }
+    ],
+    "education": [
+      {
+        "school": "电子科技大学",
+        "major": "数据科学与大数据技术",
+        "degree": "本科",
+        "start_year": 2021,
+        "end_year": 2025,
+        "gpa": "3.5/4.0",
+        "honors": "国家励志奖学金"
+      }
+    ],
+    "projects": [
+      {
+        "project_name": "电商用户价值分层与精准营销",
+        "role": "数据挖掘工程师",
+        "description": "在某电商平台担任数据挖掘工程师，负责用户价值分层和精准营销策略。基于RFM模型和用户行为序列数据，使用K-Means++聚类算法将2000万用户分为8个价值层级。针对高价值流失预警用户，设计了基于XGBoost的流失预测模型，AUC达到0.87，提前7天预测准确率78%。配合运营团队对预测流失用户进行定向优惠券投放，用户召回率提升至32%，月度GMV增长约800万元。搭建了基于ClickHouse的用户标签实时查询系统，支持运营人员自助圈选人群，日均查询量超过5000次。",
+        "tech_stack": [
+          "Python",
+          "SQL",
+          "Spark",
+          "XGBoost",
+          "Hive",
+          "ClickHouse",
+          "Airflow",
+          "Tableau"
+        ],
+        "start_date": "2025-07",
+        "end_date": "2026-06",
+        "highlights": "流失预测AUC 0.87，月度GMV+800万"
+      },
+      {
+        "project_name": "共享单车需求预测与调度优化",
+        "role": "项目组长",
+        "description": "本科毕业设计项目，针对共享单车供需不平衡问题提出数据驱动的解决方案。基于成都市30万辆共享单车的轨迹数据（约2亿条记录），构建了时空需求预测模型。使用LightGBM融合天气、节假日、POI分布等多维特征，将区域级别的30分钟需求量预测MAPE降至12.3%。基于预测结果设计了贪心+模拟退火两阶段调度算法，在仿真环境中调度效率相比基线提升28%。使用Folium和Plotly开发了交互式可视化看板，直观展示供需热力图和调度方案。项目获得校级优秀毕业设计。",
+        "tech_stack": [
+          "Python",
+          "Pandas",
+          "LightGBM",
+          "Geopandas",
+          "Folium",
+          "Plotly",
+          "Scikit-learn",
+          "SimPy"
+        ],
+        "start_date": "2024-10",
+        "end_date": "2025-05",
+        "highlights": "预测MAPE 12.3%，调度效率+28%，校级优秀毕设"
+      }
+    ],
+    "preferences": {
+      "preferred_job_types": [
+        "数据挖掘工程师",
+        "数据工程师"
+      ],
+      "preferred_sub_categories": [
+        "数据挖掘"
+      ],
+      "preferred_locations": [
+        "成都",
+        "重庆",
+        "杭州"
+      ],
+      "preferred_industries": [
+        "互联网",
+        "电子商务"
+      ],
+      "overtime_tolerance": "可接受适量加班",
+      "weekend_preference": "双休",
+      "holiday_preference": "法定节假日",
+      "labor_intensity": "中等强度",
+      "remote_work": "支持混合办公",
+      "company_scale_pref": "中大型企业"
+    },
+    "resume_raw_text": "电子科技大学数据科学本科。2年电商数据挖掘经验，负责2000万用户价值分层，流失预测模型AUC 0.87，月度GMV增长800万。精通Python/SQL/Spark，擅长特征工程和机器学习模型开发。毕设项目共享单车需求预测获校级优秀。期望在成都从事数据挖掘工作。"
+  },
+  {
+    "user_id": "u013",
+    "username": "yangfan",
+    "email": "yangfan@126.com",
+    "full_name": "杨帆",
+    "gender": "男",
+    "birth_year": 2002,
+    "degree": "本科",
+    "major": "信息安全",
+    "school": "北京邮电大学",
+    "graduation_year": 2026,
+    "current_city": "北京",
+    "expected_salary_min": 14000,
+    "expected_salary_max": 20000,
+    "years_of_experience": 0,
+    "skills": [
+      {
+        "skill_name": "Python",
+        "proficiency": "精通",
+        "category": "编程语言"
+      },
+      {
+        "skill_name": "Go",
+        "proficiency": "熟练",
+        "category": "编程语言"
+      },
+      {
+        "skill_name": "Web安全",
+        "proficiency": "精通",
+        "category": "安全领域"
+      },
+      {
+        "skill_name": "渗透测试",
+        "proficiency": "熟练",
+        "category": "安全技能"
+      },
+      {
+        "skill_name": "漏洞挖掘",
+        "proficiency": "熟练",
+        "category": "安全技能"
+      },
+      {
+        "skill_name": "Docker",
+        "proficiency": "熟练",
+        "category": "运维工具"
+      },
+      {
+        "skill_name": "Linux安全",
+        "proficiency": "熟练",
+        "category": "安全领域"
+      },
+      {
+        "skill_name": "代码审计",
+        "proficiency": "熟练",
+        "category": "安全技能"
+      }
+    ],
+    "education": [
+      {
+        "school": "北京邮电大学",
+        "major": "信息安全",
+        "degree": "本科",
+        "start_year": 2022,
+        "end_year": 2026,
+        "gpa": "3.6/4.0",
+        "honors": "全国大学生信息安全竞赛二等奖"
+      },
+      {
+        "school": "北京邮电大学",
+        "major": "信息安全",
+        "degree": "本科",
+        "start_year": 2022,
+        "end_year": 2026,
+        "gpa": "3.6/4.0",
+        "honors": "全国大学生信息安全竞赛二等奖"
+      }
+    ],
+    "projects": [
+      {
+        "project_name": "企业内部安全扫描平台建设",
+        "role": "安全工程师",
+        "description": "在某互联网公司担任安全工程师，负责企业安全扫描平台的建设与维护。基于Python开发了分布式Web漏洞扫描引擎，集成SQL注入、XSS、SSRF、命令注入等20+种漏洞检测插件，日均扫描目标超过500个。自研了一套基于AST的Java代码安全审计工具，能够自动检测OWASP Top 10中的常见漏洞模式，误报率控制在15%以下。搭建了ELK日志分析平台，对WAF和HIDS告警进行实时聚合和关联分析，将安全事件平均响应时间从4小时缩短至30分钟。累计发现并修复高危漏洞87个。",
+        "tech_stack": [
+          "Python",
+          "Docker",
+          "ELK",
+          "WAF",
+          "HIDS",
+          "AST",
+          "Burp Suite",
+          "Metasploit"
+        ],
+        "start_date": "2025-06",
+        "end_date": "2025-12",
+        "highlights": "日均扫描500+目标，修复高危漏洞87个"
+      },
+      {
+        "project_name": "智能合约漏洞自动化检测系统",
+        "role": "核心开发者",
+        "description": "本科毕业设计项目，针对以太坊智能合约安全问题开发了自动化漏洞检测系统。基于符号执行和污点分析技术，实现了对重入攻击、整数溢出、时间戳依赖等8类智能合约漏洞的自动检测。使用Slither作为静态分析引擎，结合自定义检测规则和Echidna模糊测试工具，在公开数据集SmartBugs上漏洞检出率达到91%，误报率12%。开发了Web可视化界面，支持合约上传、漏洞报告生成和修复建议展示。项目获得校级优秀毕业设计和学院创新基金支持。",
+        "tech_stack": [
+          "Python",
+          "Solidity",
+          "Slither",
+          "Echidna",
+          "Flask",
+          "Vue.js",
+          "Docker",
+          "Ethereum"
+        ],
+        "start_date": "2025-01",
+        "end_date": "2025-05",
+        "highlights": "漏洞检出率91%，校级优秀毕设"
+      }
+    ],
+    "preferences": {
+      "preferred_job_types": [
+        "安全工程师",
+        "应用安全工程师"
+      ],
+      "preferred_sub_categories": [
+        "安全工程师"
+      ],
+      "preferred_locations": [
+        "北京",
+        "深圳",
+        "上海"
+      ],
+      "preferred_industries": [
+        "互联网",
+        "金融科技",
+        "网络安全"
+      ],
+      "overtime_tolerance": "可接受适量加班",
+      "weekend_preference": "双休",
+      "holiday_preference": "法定节假日",
+      "labor_intensity": "中等强度",
+      "remote_work": "支持混合办公",
+      "company_scale_pref": "中大型企业"
+    },
+    "resume_raw_text": "北京邮电大学信息安全本科。1年互联网企业安全经验，主导自研Web漏洞扫描引擎和代码审计工具，累计修复高危漏洞87个。全国大学生信息安全竞赛二等奖。精通Web安全和渗透测试，有智能合约漏洞检测研究经验。期望在北京从事安全工程师工作。"
+  },
+  {
+    "user_id": "u014",
+    "username": "xuyan",
+    "email": "xuyan@outlook.com",
+    "full_name": "徐燕",
+    "gender": "女",
+    "birth_year": 2000,
+    "degree": "本科",
+    "major": "计算机科学与技术",
+    "school": "深圳大学",
+    "graduation_year": 2024,
+    "current_city": "深圳",
+    "expected_salary_min": 18000,
+    "expected_salary_max": 25000,
+    "years_of_experience": 2,
+    "skills": [
+      {
+        "skill_name": "Go",
+        "proficiency": "精通",
+        "category": "编程语言"
+      },
+      {
+        "skill_name": "Python",
+        "proficiency": "熟练",
+        "category": "编程语言"
+      },
+      {
+        "skill_name": "Kubernetes",
+        "proficiency": "精通",
+        "category": "容器编排"
+      },
+      {
+        "skill_name": "Docker",
+        "proficiency": "精通",
+        "category": "容器技术"
+      },
+      {
+        "skill_name": "Prometheus",
+        "proficiency": "熟练",
+        "category": "监控"
+      },
+      {
+        "skill_name": "Terraform",
+        "proficiency": "熟练",
+        "category": "IaC"
+      },
+      {
+        "skill_name": "Linux",
+        "proficiency": "精通",
+        "category": "操作系统"
+      },
+      {
+        "skill_name": "CI/CD",
+        "proficiency": "熟练",
+        "category": "DevOps"
+      }
+    ],
+    "education": [
+      {
+        "school": "深圳大学",
+        "major": "计算机科学与技术",
+        "degree": "本科",
+        "start_year": 2020,
+        "end_year": 2024,
+        "gpa": "3.3/4.0",
+        "honors": "校级优秀毕业生"
+      },
+      {
+        "school": "深圳大学",
+        "major": "计算机科学与技术",
+        "degree": "本科",
+        "start_year": 2020,
+        "end_year": 2024,
+        "gpa": "3.3/4.0",
+        "honors": "校级优秀毕业生"
+      }
+    ],
+    "projects": [
+      {
+        "project_name": "大规模Kubernetes集群运维体系建设",
+        "role": "SRE工程师",
+        "description": "在某云服务公司担任SRE工程师，负责公司核心业务Kubernetes集群的运维保障。管理15+个生产集群，总节点数超过2000台。主导了集群监控体系的搭建，基于Prometheus+Thanos+Grafana构建了多集群统一监控平台，实现了200+核心指标的采集与告警。使用Go语言开发了集群自动扩缩容控制器，基于自定义Metrics（CPU、内存、QPS）实现HPA策略的动态调整，资源利用率从35%提升至62%。参与多次线上故障的应急响应，全年SLA保持在99.95%以上。",
+        "tech_stack": [
+          "Go",
+          "Kubernetes",
+          "Docker",
+          "Prometheus",
+          "Thanos",
+          "Grafana",
+          "Helm",
+          "Terraform"
+        ],
+        "start_date": "2024-09",
+        "end_date": "2026-06",
+        "highlights": "管理2000+节点，资源利用率35%→62%"
+      },
+      {
+        "project_name": "云原生应用部署编排平台",
+        "role": "核心开发者",
+        "description": "本科毕业设计及后续持续迭代的项目，开发了一个简化版的云原生应用部署平台。平台支持从Git仓库自动拉取代码、构建Docker镜像、部署至Kubernetes集群的完整流水线。使用Go语言开发核心API，通过Kubernetes Client-Go与集群交互，支持Deployment、Service、Ingress等资源的声明式管理。设计了基于Webhook的自动部署触发机制，代码Push后3分钟内自动完成部署。使用React开发管理控制台，支持可视化查看Pod状态、日志和资源使用情况。项目在GitHub开源后获得300+ Star。",
+        "tech_stack": [
+          "Go",
+          "Kubernetes",
+          "Docker",
+          "React",
+          "Client-Go",
+          "GitHub Webhook",
+          "PostgreSQL",
+          "Nginx"
+        ],
+        "start_date": "2023-01",
+        "end_date": "2024-06",
+        "highlights": "代码Push后3分钟自动部署，GitHub 300+ Star"
+      }
+    ],
+    "preferences": {
+      "preferred_job_types": [
+        "SRE工程师",
+        "云原生开发工程师"
+      ],
+      "preferred_sub_categories": [
+        "SRE/云原生"
+      ],
+      "preferred_locations": [
+        "深圳",
+        "广州",
+        "上海"
+      ],
+      "preferred_industries": [
+        "云计算",
+        "互联网"
+      ],
+      "overtime_tolerance": "可接受适量加班",
+      "weekend_preference": "双休",
+      "holiday_preference": "法定节假日",
+      "labor_intensity": "中等强度",
+      "remote_work": "支持混合办公",
+      "company_scale_pref": "中大型企业"
+    },
+    "resume_raw_text": "深圳大学计算机本科。2年云服务公司SRE经验，管理2000+节点Kubernetes集群。精通Go和Kubernetes生态，主导监控体系搭建和自动扩缩容开发，资源利用率提升至62%。开源云原生部署平台获300+ Star。期望在深圳从事SRE或云原生开发工作。"
+  },
+  {
+    "user_id": "u015",
+    "username": "linjie",
+    "email": "linjie@qq.com",
+    "full_name": "林杰",
+    "gender": "男",
+    "birth_year": 2001,
+    "degree": "本科",
+    "major": "软件工程",
+    "school": "福州大学",
+    "graduation_year": 2024,
+    "current_city": "广州",
+    "expected_salary_min": 10000,
+    "expected_salary_max": 15000,
+    "years_of_experience": 2,
+    "skills": [
+      {
+        "skill_name": "Java",
+        "proficiency": "精通",
+        "category": "编程语言"
+      },
+      {
+        "skill_name": "Python",
+        "proficiency": "熟练",
+        "category": "编程语言"
+      },
+      {
+        "skill_name": "Spring Boot",
+        "proficiency": "精通",
+        "category": "框架"
+      },
+      {
+        "skill_name": "MySQL",
+        "proficiency": "熟练",
+        "category": "数据库"
+      },
+      {
+        "skill_name": "Redis",
+        "proficiency": "了解",
+        "category": "中间件"
+      },
+      {
+        "skill_name": "MyBatis",
+        "proficiency": "精通",
+        "category": "ORM框架"
+      },
+      {
+        "skill_name": "Docker",
+        "proficiency": "了解",
+        "category": "运维工具"
+      },
+      {
+        "skill_name": "Git",
+        "proficiency": "熟练",
+        "category": "版本控制"
+      }
+    ],
+    "education": [
+      {
+        "school": "福州大学",
+        "major": "软件工程",
+        "degree": "本科",
+        "start_year": 2020,
+        "end_year": 2024,
+        "gpa": "3.2/4.0",
+        "honors": "校级奖学金"
+      }
+    ],
+    "projects": [
+      {
+        "project_name": "智慧园区物业管理系统",
+        "role": "Java开发工程师",
+        "description": "在某中小型软件公司担任Java开发，负责智慧园区物业管理系统的后端开发。系统涵盖报事报修、费用管理、门禁管理和访客登记4个核心模块。基于Spring Boot+MyBatis技术栈开发RESTful API，使用MySQL存储业务数据，通过Redis缓存高频查询的门禁记录使接口响应时间从200ms降至50ms。独立设计并实现了基于RBAC的权限控制体系，支持园区管理员、物业人员、业主三种角色的细粒度权限划分。系统已交付3个产业园区使用，覆盖管理面积超过50万平方米。",
+        "tech_stack": [
+          "Java",
+          "Spring Boot",
+          "MyBatis",
+          "MySQL",
+          "Redis",
+          "Docker",
+          "Nginx",
+          "JWT"
+        ],
+        "start_date": "2024-09",
+        "end_date": "2026-06",
+        "highlights": "交付3个园区，覆盖面积50万+平方米"
+      },
+      {
+        "project_name": "在线考试与自动阅卷系统",
+        "role": "项目负责人",
+        "description": "本科毕业设计项目，为学校教务处开发的在线考试与自动阅卷系统。后端使用Spring Boot框架，前端采用Vue2+Element UI。核心创新在于自动阅卷模块：对客观题采用精确匹配评分，对编程题通过Docker沙箱运行测试用例进行自动化评判，并集成代码相似度检测防止作弊。系统支持1000人同时在线考试，通过数据库连接池优化和题目预加载机制保证并发性能。项目在学院试用一个学期，覆盖8门课程、累计3000+人次考试，阅卷效率提升70%以上。",
+        "tech_stack": [
+          "Java",
+          "Spring Boot",
+          "Vue2",
+          "MySQL",
+          "Docker",
+          "WebSocket",
+          "JWT",
+          "Maven"
+        ],
+        "start_date": "2023-11",
+        "end_date": "2024-05",
+        "highlights": "1000人并发，阅卷效率提升70%，院级采纳"
+      }
+    ],
+    "preferences": {
+      "preferred_job_types": [
+        "后端开发工程师",
+        "Java开发工程师"
+      ],
+      "preferred_sub_categories": [
+        "Java后端"
+      ],
+      "preferred_locations": [
+        "广州",
+        "深圳"
+      ],
+      "preferred_industries": [
+        "互联网",
+        "企业服务"
+      ],
+      "overtime_tolerance": "可接受适量加班",
+      "weekend_preference": "双休",
+      "holiday_preference": "法定节假日",
+      "labor_intensity": "中等强度",
+      "remote_work": "支持混合办公",
+      "company_scale_pref": "中大型企业"
+    },
+    "resume_raw_text": "广东工业大学软件工程本科。2年Java后端开发经验，负责智慧园区管理系统后端开发，交付3个产业园区。精通Spring Boot/MyBatis，独立设计RBAC权限体系。毕设项目在线考试系统覆盖8门课程3000+人次。期望在广州从事Java后端开发工作。"
+  },
+  {
+    "user_id": "u016",
+    "username": "hemei",
+    "email": "hemei@163.com",
+    "full_name": "何梅",
+    "gender": "女",
+    "birth_year": 2000,
+    "degree": "本科",
+    "major": "计算机科学与技术",
+    "school": "南昌大学",
+    "graduation_year": 2022,
+    "current_city": "南昌",
+    "expected_salary_min": 12000,
+    "expected_salary_max": 18000,
+    "years_of_experience": 2,
+    "skills": [
+      {
+        "skill_name": "Python",
+        "proficiency": "精通",
+        "category": "编程语言"
+      },
+      {
+        "skill_name": "Java",
+        "proficiency": "熟练",
+        "category": "编程语言"
+      },
+      {
+        "skill_name": "Selenium",
+        "proficiency": "精通",
+        "category": "自动化测试"
+      },
+      {
+        "skill_name": "JMeter",
+        "proficiency": "熟练",
+        "category": "性能测试"
+      },
+      {
+        "skill_name": "Pytest",
+        "proficiency": "精通",
+        "category": "测试框架"
+      },
+      {
+        "skill_name": "Postman",
+        "proficiency": "熟练",
+        "category": "接口测试"
+      },
+      {
+        "skill_name": "Jenkins",
+        "proficiency": "熟练",
+        "category": "CI/CD"
+      },
+      {
+        "skill_name": "SQL",
+        "proficiency": "熟练",
+        "category": "数据库"
+      }
+    ],
+    "education": [
+      {
+        "school": "南昌大学",
+        "major": "计算机科学与技术",
+        "degree": "本科",
+        "start_year": 2018,
+        "end_year": 2022,
+        "gpa": "3.2/4.0",
+        "honors": "校级优秀学生"
+      },
+      {
+        "school": "南昌大学",
+        "major": "计算机科学与技术",
+        "degree": "本科",
+        "start_year": 2018,
+        "end_year": 2022,
+        "gpa": "3.2/4.0",
+        "honors": "校级优秀学生"
+      }
+    ],
+    "projects": [
+      {
+        "project_name": "电商中台自动化测试体系建设",
+        "role": "测试开发工程师",
+        "description": "在某电商公司担任测试开发工程师，负责电商中台的测试体系搭建。从零搭建了接口自动化测试框架，基于Pytest+Requests+Allure技术栈，覆盖订单、商品、用户、支付4个核心域的200+接口。设计了数据驱动和关键字驱动相结合的测试用例编写模式，测试用例编写效率提升50%。集成Jenkins实现每日自动回归，测试执行时间从人工4小时缩短至20分钟。引入精准测试理念，通过代码变更分析自动推荐需要执行的用例集，将回归用例数量减少40%的同时保持90%的缺陷发现率。累计发现线上缺陷120+个。",
+        "tech_stack": [
+          "Python",
+          "Pytest",
+          "Requests",
+          "Allure",
+          "Jenkins",
+          "MySQL",
+          "Redis",
+          "Docker"
+        ],
+        "start_date": "2023-08",
+        "end_date": "2026-06",
+        "highlights": "测试效率+50%，回归4h→20min，缺陷发现120+"
+      },
+      {
+        "project_name": "基于AI的UI自动化测试生成工具",
+        "role": "独立开发者",
+        "description": "本科毕业设计项目，探索利用计算机视觉技术自动生成UI自动化测试脚本。使用OpenCV和OCR技术识别页面元素，通过YOLOv5模型检测按钮、输入框、下拉框等7类常见UI组件，检测mAP达到0.92。基于Appium框架自动生成可执行的测试脚本，支持页面跳转关系的自动探索和测试用例生成。在5个常见App上测试，自动生成的脚本覆盖了平均73%的功能路径，人工只需少量调整即可使用。项目获得校级优秀毕业设计，相关论文发表在学院学报。",
+        "tech_stack": [
+          "Python",
+          "OpenCV",
+          "YOLOv5",
+          "Appium",
+          "Selenium",
+          "Flask",
+          "PyTorch",
+          "LabelImg"
+        ],
+        "start_date": "2021-12",
+        "end_date": "2022-06",
+        "highlights": "UI组件检测mAP 0.92，功能路径覆盖73%"
+      }
+    ],
+    "preferences": {
+      "preferred_job_types": [
+        "测试开发工程师",
+        "质量保障工程师"
+      ],
+      "preferred_sub_categories": [
+        "测试开发"
+      ],
+      "preferred_locations": [
+        "南昌",
+        "杭州",
+        "上海"
+      ],
+      "preferred_industries": [
+        "互联网",
+        "电子商务"
+      ],
+      "overtime_tolerance": "可接受适量加班",
+      "weekend_preference": "双休",
+      "holiday_preference": "法定节假日",
+      "labor_intensity": "中等强度",
+      "remote_work": "支持混合办公",
+      "company_scale_pref": "中大型企业"
+    },
+    "resume_raw_text": "杭州电子科技大学计算机本科。2年电商测试开发经验，从零搭建自动化测试体系，覆盖200+接口。精通Python/Pytest，将回归测试时间从4小时缩短至20分钟。毕设项目基于AI的UI自动化测试生成工具获校级优秀。期望在杭州从事测试开发工作。"
+  },
+  {
+    "user_id": "u017",
+    "username": "gaopeng",
+    "email": "gaopeng@foxmail.com",
+    "full_name": "高鹏",
+    "gender": "男",
+    "birth_year": 2002,
+    "degree": "本科",
+    "major": "计算机科学与技术",
+    "school": "重庆邮电大学",
+    "graduation_year": 2024,
+    "current_city": "重庆",
+    "expected_salary_min": 8000,
+    "expected_salary_max": 12000,
+    "years_of_experience": 1,
+    "skills": [
+      {
+        "skill_name": "Java",
+        "proficiency": "熟练",
+        "category": "编程语言"
+      },
+      {
+        "skill_name": "Python",
+        "proficiency": "熟练",
+        "category": "编程语言"
+      },
+      {
+        "skill_name": "Spring Boot",
+        "proficiency": "熟练",
+        "category": "框架"
+      },
+      {
+        "skill_name": "MySQL",
+        "proficiency": "熟练",
+        "category": "数据库"
+      },
+      {
+        "skill_name": "Vue.js",
+        "proficiency": "熟练",
+        "category": "前端框架"
+      },
+      {
+        "skill_name": "Redis",
+        "proficiency": "了解",
+        "category": "中间件"
+      },
+      {
+        "skill_name": "Git",
+        "proficiency": "熟练",
+        "category": "版本控制"
+      },
+      {
+        "skill_name": "Linux",
+        "proficiency": "了解",
+        "category": "操作系统"
+      }
+    ],
+    "education": [
+      {
+        "school": "重庆邮电大学",
+        "major": "计算机科学与技术",
+        "degree": "本科",
+        "start_year": 2020,
+        "end_year": 2024,
+        "gpa": "3.0/4.0",
+        "honors": "ACM校赛三等奖"
+      }
+    ],
+    "projects": [
+      {
+        "project_name": "企业OA办公系统开发",
+        "role": "Java开发",
+        "description": "在某小型软件外包公司担任Java开发，参与企业OA办公系统的前后端开发。系统包含考勤管理、审批流程、公告通知、会议管理4个模块。后端使用Spring Boot+MyBatis-Plus开发，前端使用Vue3+Element Plus。独立负责审批流程模块，基于Activiti工作流引擎实现了请假、报销、出差等5种审批流程的可视化配置，支持会签、或签和条件分支。使用WebSocket实现了审批状态实时推送。项目已交付给3家企业客户使用，日常活跃用户200+人。",
+        "tech_stack": [
+          "Java",
+          "Spring Boot",
+          "MyBatis-Plus",
+          "Activiti",
+          "Vue3",
+          "MySQL",
+          "Redis",
+          "WebSocket"
+        ],
+        "start_date": "2025-07",
+        "end_date": "2026-06",
+        "highlights": "独立开发审批流程模块，交付3家企业"
+      },
+      {
+        "project_name": "校园跑腿服务平台",
+        "role": "全栈开发者",
+        "description": "本科期间与同学合作开发的校园跑腿服务平台微信小程序。使用uni-app框架进行跨端开发，后端使用Spring Boot提供API服务。实现了用户发布订单、跑腿员接单、订单追踪、在线支付和评价系统等完整功能链路。使用腾讯地图API实现跑腿员位置实时追踪和路径规划，通过WebSocket推送订单状态变更通知。接入微信支付实现线上交易闭环。小程序上线后校内注册用户达到3000+人，日均订单量约80单，在毕业季高峰期日订单突破200单。",
+        "tech_stack": [
+          "Java",
+          "Spring Boot",
+          "uni-app",
+          "Vue.js",
+          "MySQL",
+          "微信支付",
+          "腾讯地图API",
+          "WebSocket"
+        ],
+        "start_date": "2023-06",
+        "end_date": "2024-03",
+        "highlights": "校内3000+用户，日均80单"
+      }
+    ],
+    "preferences": {
+      "preferred_job_types": [
+        "后端开发工程师",
+        "全栈开发工程师"
+      ],
+      "preferred_sub_categories": [
+        "Java后端"
+      ],
+      "preferred_locations": [
+        "重庆",
+        "成都",
+        "杭州"
+      ],
+      "preferred_industries": [
+        "互联网",
+        "企业服务"
+      ],
+      "overtime_tolerance": "可接受适量加班",
+      "weekend_preference": "双休",
+      "holiday_preference": "法定节假日",
+      "labor_intensity": "中等强度",
+      "remote_work": "支持混合办公",
+      "company_scale_pref": "中小企业"
+    },
+    "resume_raw_text": "重庆邮电大学计算机本科。1年Java开发经验，参与企业OA系统开发，独立负责审批流程模块并交付3家企业。熟悉Spring Boot+Vue全栈开发，有微信小程序完整项目经验，校园跑腿平台校内用户3000+。期望在重庆、成都从事Java后端或全栈开发工作。"
+  },
+  {
+    "user_id": "u018",
+    "username": "zhangxue",
+    "email": "zhangxue@qq.com",
+    "full_name": "张雪",
+    "gender": "女",
+    "birth_year": 2002,
+    "degree": "本科",
+    "major": "信息管理与信息系统",
+    "school": "安徽大学",
+    "graduation_year": 2024,
+    "current_city": "合肥",
+    "expected_salary_min": 8000,
+    "expected_salary_max": 12000,
+    "years_of_experience": 1,
+    "skills": [
+      {
+        "skill_name": "Axure RP",
+        "proficiency": "精通",
+        "category": "原型设计"
+      },
+      {
+        "skill_name": "Figma",
+        "proficiency": "熟练",
+        "category": "UI设计"
+      },
+      {
+        "skill_name": "SQL",
+        "proficiency": "熟练",
+        "category": "数据库"
+      },
+      {
+        "skill_name": "Python",
+        "proficiency": "了解",
+        "category": "编程语言"
+      },
+      {
+        "skill_name": "需求分析",
+        "proficiency": "精通",
+        "category": "产品技能"
+      },
+      {
+        "skill_name": "PRD撰写",
+        "proficiency": "精通",
+        "category": "产品技能"
+      },
+      {
+        "skill_name": "数据分析",
+        "proficiency": "熟练",
+        "category": "产品技能"
+      },
+      {
+        "skill_name": "项目管理",
+        "proficiency": "熟练",
+        "category": "产品技能"
+      }
+    ],
+    "education": [
+      {
+        "school": "安徽大学",
+        "major": "信息管理与信息系统",
+        "degree": "本科",
+        "start_year": 2020,
+        "end_year": 2024,
+        "gpa": "3.3/4.0",
+        "honors": "优秀学生干部"
+      }
+    ],
+    "projects": [
+      {
+        "project_name": "B端SaaS工单管理系统产品设计",
+        "role": "产品助理",
+        "description": "在某企业服务SaaS公司担任产品助理，参与工单管理系统的产品设计与迭代。独立负责工单创建、分配、处理、关闭全流程的产品设计，输出15+份PRD文档和30+个原型页面。通过用户访谈和数据分析，发现工单流转中平均等待时间为4.5小时，主导设计了智能分配规则（基于工程师技能标签和当前负载），将等待时间缩短至1.2小时。推动工单模板功能上线，将重复性工单创建效率提升60%。协调设计、开发、测试团队完成3个版本迭代，版本按时交付率100%。",
+        "tech_stack": [
+          "Axure RP",
+          "Figma",
+          "SQL",
+          "JIRA",
+          "Confluence",
+          "Google Analytics",
+          "Mixpanel",
+          "Notion"
+        ],
+        "start_date": "2025-03",
+        "end_date": "2026-06",
+        "highlights": "等待时间4.5h→1.2h，3个版本100%按时交付"
+      },
+      {
+        "project_name": "校园闲置物品共享平台产品设计",
+        "role": "产品负责人",
+        "description": "本科期间带领5人团队从零到一设计的校园闲置物品共享平台。通过200+份问卷调研和15场用户访谈，明确了大学生闲置物品交易的核心痛点是信任缺失和交易效率低。设计了基于学生认证的信用体系、物品分类检索、校内LBS定位和即时通讯四大核心功能。使用Axure RP完成50+页高保真原型，撰写了完整的BRD和PRD文档。组织3轮可用性测试，根据用户反馈优化了发布流程，将物品发布完成率从62%提升至85%。项目获得安徽省大学生创新创业计划立项。",
+        "tech_stack": [
+          "Axure RP",
+          "墨刀",
+          "ProcessOn",
+          "问卷星",
+          "SPSS",
+          "XMind",
+          "蓝湖",
+          "腾讯文档"
+        ],
+        "start_date": "2023-03",
+        "end_date": "2024-01",
+        "highlights": "200+问卷调研，发布完成率62%→85%，省级立项"
+      }
+    ],
+    "preferences": {
+      "preferred_job_types": [
+        "产品经理",
+        "产品助理"
+      ],
+      "preferred_sub_categories": [
+        "产品经理"
+      ],
+      "preferred_locations": [
+        "合肥",
+        "南京",
+        "杭州"
+      ],
+      "preferred_industries": [
+        "互联网",
+        "企业服务"
+      ],
+      "overtime_tolerance": "可接受适量加班",
+      "weekend_preference": "双休",
+      "holiday_preference": "法定节假日",
+      "labor_intensity": "中等强度",
+      "remote_work": "支持混合办公",
+      "company_scale_pref": "中大型企业"
+    },
+    "resume_raw_text": "安徽大学信息管理本科。1年B端SaaS产品经验，参与工单管理系统设计，主导智能分配规则使等待时间缩短73%。精通Axure/Figma原型设计和PRD撰写，有完整的用户调研和可用性测试经验。校园项目获省级创新创业立项。期望在合肥、南京从事产品经理工作。"
+  },
+  {
+    "user_id": "u019",
+    "username": "jiangtao",
+    "email": "jiangtao@126.com",
+    "full_name": "江涛",
+    "gender": "男",
+    "birth_year": 2002,
+    "degree": "本科",
+    "major": "软件工程",
+    "school": "武汉科技大学",
+    "graduation_year": 2024,
+    "current_city": "武汉",
+    "expected_salary_min": 8000,
+    "expected_salary_max": 10000,
+    "years_of_experience": 1,
+    "skills": [
+      {
+        "skill_name": "Java",
+        "proficiency": "熟练",
+        "category": "编程语言"
+      },
+      {
+        "skill_name": "Spring Boot",
+        "proficiency": "熟练",
+        "category": "框架"
+      },
+      {
+        "skill_name": "MySQL",
+        "proficiency": "熟练",
+        "category": "数据库"
+      },
+      {
+        "skill_name": "MyBatis",
+        "proficiency": "熟练",
+        "category": "ORM框架"
+      },
+      {
+        "skill_name": "HTML/CSS",
+        "proficiency": "熟练",
+        "category": "前端基础"
+      },
+      {
+        "skill_name": "JavaScript",
+        "proficiency": "了解",
+        "category": "编程语言"
+      },
+      {
+        "skill_name": "Git",
+        "proficiency": "熟练",
+        "category": "版本控制"
+      },
+      {
+        "skill_name": "Linux",
+        "proficiency": "了解",
+        "category": "操作系统"
+      }
+    ],
+    "education": [
+      {
+        "school": "武汉科技大学",
+        "major": "软件工程",
+        "degree": "本科",
+        "start_year": 2020,
+        "end_year": 2024,
+        "gpa": "2.9/4.0",
+        "honors": "无"
+      }
+    ],
+    "projects": [
+      {
+        "project_name": "外包项目管理系统开发",
+        "role": "Java开发",
+        "description": "在某小型软件外包公司担任Java开发，参与外包项目管理系统的开发。系统用于管理外包项目的需求、进度、人员和结算。基于Spring Boot+MyBatis+MySQL技术栈，独立开发了项目进度跟踪和人员工时统计两个模块。实现了基于甘特图的项目进度可视化展示，使用ECharts绘制工时统计图表。设计并实现了数据导出功能，支持将项目报表导出为Excel和PDF格式。系统上线后帮助项目经理将进度跟踪效率提升40%，月度结算工作量减少50%。",
+        "tech_stack": [
+          "Java",
+          "Spring Boot",
+          "MyBatis",
+          "MySQL",
+          "ECharts",
+          "Apache POI",
+          "iText",
+          "Layui"
+        ],
+        "start_date": "2025-07",
+        "end_date": "2026-06",
+        "highlights": "进度跟踪效率+40%，结算工作量-50%"
+      },
+      {
+        "project_name": "实验室设备预约管理系统",
+        "role": "全栈开发者",
+        "description": "本科毕业设计项目，为学院实验室开发的设备预约管理系统。系统实现了设备信息管理、预约申请、审批流程和使用记录统计四个核心功能。后端使用Spring Boot开发RESTful API，前端使用Layui+Thymeleaf模板引擎。设计了基于时间段的预约冲突检测算法，防止同一设备在同一时段被多人预约。实现了预约到期自动提醒功能，通过邮件通知用户及时归还设备。系统在学院部署使用一个学期，管理50+台设备，处理预约记录800+条，有效解决了设备使用冲突问题。",
+        "tech_stack": [
+          "Java",
+          "Spring Boot",
+          "MyBatis",
+          "MySQL",
+          "Layui",
+          "Thymeleaf",
+          "JavaMail",
+          "Bootstrap"
+        ],
+        "start_date": "2023-12",
+        "end_date": "2024-05",
+        "highlights": "管理50+设备，处理800+预约，院级部署使用"
+      }
+    ],
+    "preferences": {
+      "preferred_job_types": [
+        "Java开发工程师",
+        "后端开发工程师"
+      ],
+      "preferred_sub_categories": [
+        "Java后端"
+      ],
+      "preferred_locations": [
+        "武汉",
+        "长沙",
+        "南京"
+      ],
+      "preferred_industries": [
+        "互联网",
+        "企业服务"
+      ],
+      "overtime_tolerance": "可接受较多加班",
+      "weekend_preference": "单双休均可",
+      "holiday_preference": "法定节假日",
+      "labor_intensity": "高强度可接受",
+      "remote_work": "不支持远程",
+      "company_scale_pref": "中小企业"
+    },
+    "resume_raw_text": "武汉科技大学软件工程本科。1年Java开发经验，参与外包项目管理系统开发，独立负责进度跟踪和工时统计模块。熟悉Spring Boot/MyBatis/MySQL技术栈，有前后端全栈开发能力。毕设项目实验室设备管理系统在学院部署使用。期望在武汉从事Java后端开发工作。"
+  },
+  {
+    "user_id": "u020",
+    "username": "luowei",
+    "email": "luowei@qq.com",
+    "full_name": "罗伟",
+    "gender": "男",
+    "birth_year": 2001,
+    "degree": "本科",
+    "major": "计算机科学与技术",
+    "school": "南华大学",
+    "graduation_year": 2023,
+    "current_city": "长沙",
+    "expected_salary_min": 7000,
+    "expected_salary_max": 10000,
+    "years_of_experience": 1,
+    "skills": [
+      {
+        "skill_name": "Java",
+        "proficiency": "熟练",
+        "category": "编程语言"
+      },
+      {
+        "skill_name": "Spring Boot",
+        "proficiency": "熟练",
+        "category": "框架"
+      },
+      {
+        "skill_name": "MySQL",
+        "proficiency": "熟练",
+        "category": "数据库"
+      },
+      {
+        "skill_name": "MyBatis",
+        "proficiency": "熟练",
+        "category": "ORM框架"
+      },
+      {
+        "skill_name": "HTML/CSS",
+        "proficiency": "了解",
+        "category": "前端基础"
+      },
+      {
+        "skill_name": "Vue.js",
+        "proficiency": "了解",
+        "category": "前端框架"
+      },
+      {
+        "skill_name": "Git",
+        "proficiency": "了解",
+        "category": "版本控制"
+      },
+      {
+        "skill_name": "Redis",
+        "proficiency": "了解",
+        "category": "中间件"
+      }
+    ],
+    "education": [
+      {
+        "school": "南华大学",
+        "major": "计算机科学与技术",
+        "degree": "本科",
+        "start_year": 2019,
+        "end_year": 2023,
+        "gpa": "2.7/4.0",
+        "honors": "无"
+      }
+    ],
+    "projects": [
+      {
+        "project_name": "进销存管理系统开发与维护",
+        "role": "Java开发",
+        "description": "在某小型商贸公司IT部门担任Java开发，负责公司内部进销存管理系统的日常开发和维护。系统管理公司的商品采购、库存、销售和财务报表。基于Spring Boot+MyBatis+MySQL技术栈，独立完成了库存预警模块的开发，通过定时任务每日自动检测库存水平，当库存低于安全阈值时自动生成采购建议单并发送邮件通知采购部门。优化了商品查询接口，通过添加数据库索引和SQL优化将查询响应时间从800ms降至150ms。日常处理用户反馈和系统Bug修复，累计解决线上问题50+个。",
+        "tech_stack": [
+          "Java",
+          "Spring Boot",
+          "MyBatis",
+          "MySQL",
+          "Quartz",
+          "JavaMail",
+          "Thymeleaf",
+          "Bootstrap"
+        ],
+        "start_date": "2024-03",
+        "end_date": "2026-06",
+        "highlights": "库存预警自动化，查询800ms→150ms"
+      },
+      {
+        "project_name": "学生成绩管理与分析系统",
+        "role": "独立开发者",
+        "description": "本科毕业设计项目，为系部开发的学生成绩管理与分析系统。系统实现成绩录入、查询、统计分析和成绩单导出功能。后端使用Spring Boot开发，前端使用Bootstrap+jQuery。设计了基于ECharts的成绩分析模块，支持班级平均分、成绩分布直方图、学生个人成绩趋势图等6种可视化图表。实现了成绩数据的Excel批量导入导出，支持从学校教务系统导出的标准格式直接导入。系统在系部试用一个学期，管理3个专业12个班级的成绩数据，获得系部老师好评。",
+        "tech_stack": [
+          "Java",
+          "Spring Boot",
+          "MyBatis",
+          "MySQL",
+          "ECharts",
+          "Bootstrap",
+          "jQuery",
+          "Apache POI"
+        ],
+        "start_date": "2022-12",
+        "end_date": "2023-05",
+        "highlights": "管理12个班级成绩，系部试用并获得好评"
+      }
+    ],
+    "preferences": {
+      "preferred_job_types": [
+        "Java开发工程师",
+        "后端开发工程师"
+      ],
+      "preferred_sub_categories": [
+        "Java后端"
+      ],
+      "preferred_locations": [
+        "长沙",
+        "武汉",
+        "南昌"
+      ],
+      "preferred_industries": [
+        "企业服务",
+        "传统行业信息化"
+      ],
+      "overtime_tolerance": "可接受较多加班",
+      "weekend_preference": "大小周可接受",
+      "holiday_preference": "法定节假日",
+      "labor_intensity": "高强度可接受",
+      "remote_work": "不支持远程",
+      "company_scale_pref": "中小企业"
+    },
+    "resume_raw_text": "南华大学计算机本科。1年企业内部系统Java开发经验，负责进销存管理系统开发和维护，独立完成库存预警模块。熟悉Spring Boot/MyBatis/MySQL技术栈，有SQL优化和系统问题排查经验。毕设项目学生成绩管理系统在系部部署使用。期望在长沙从事Java后端开发工作。"
+  }
+]

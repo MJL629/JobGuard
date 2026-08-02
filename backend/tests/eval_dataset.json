@@ -1,0 +1,376 @@
+{
+  "test_suite": "jobguard_eval_v1",
+  "created": "2026-07-26",
+  "scenarios": {
+    "profile_building": [
+      {
+        "id": "prof_001",
+        "input": "我是北邮计算机硕士，熟悉Python和PyTorch，想找算法岗",
+        "expected_intent": "build_profile",
+        "expected_fields": {"degree": "硕士", "major": "计算机", "school": "北京邮电大学"},
+        "min_completeness": 40
+      },
+      {
+        "id": "prof_002",
+        "input": "帮我完善一下求职画像，我之前填了一部分信息",
+        "expected_intent": "build_profile",
+        "expected_fields": {},
+        "min_completeness": 30
+      },
+      {
+        "id": "prof_003",
+        "input": "我是清华本科，学电子工程的，毕业两年了，在深圳",
+        "expected_intent": "build_profile",
+        "expected_fields": {"degree": "本科", "major": "电子工程", "school": "清华大学"},
+        "min_completeness": 40
+      },
+      {
+        "id": "prof_004",
+        "input": "更新我的画像：期望薪资20K-30K，工作城市北京或上海",
+        "expected_intent": "build_profile",
+        "expected_fields": {"preferred_locations": ["北京", "上海"]},
+        "min_completeness": 30
+      },
+      {
+        "id": "prof_005",
+        "input": "我想找后端开发的工作，Java和Spring Boot比较熟，期望月薪15K以上",
+        "expected_intent": "build_profile",
+        "expected_fields": {},
+        "min_completeness": 35
+      },
+      {
+        "id": "prof_006",
+        "input": "我的画像现在完整了吗？帮我看看还缺什么",
+        "expected_intent": "build_profile",
+        "expected_fields": {},
+        "min_completeness": 20
+      },
+      {
+        "id": "prof_007",
+        "input": "我是应届生，浙大计算机本科，想做前端，React和Vue都会",
+        "expected_intent": "build_profile",
+        "expected_fields": {"degree": "本科", "major": "计算机", "school": "浙江大学"},
+        "min_completeness": 40
+      },
+      {
+        "id": "prof_008",
+        "input": "帮我建立求职画像，我不太清楚该怎么填",
+        "expected_intent": "build_profile",
+        "expected_fields": {},
+        "min_completeness": 20
+      },
+      {
+        "id": "prof_009",
+        "input": "我是南大硕士，学的AI，熟练TensorFlow和Keras，期望薪资25K-35K，只考虑上海",
+        "expected_intent": "build_profile",
+        "expected_fields": {"degree": "硕士", "major": "AI", "school": "南京大学"},
+        "min_completeness": 45
+      },
+      {
+        "id": "prof_010",
+        "input": "我对工作强度有要求，不接受996，必须双休，公司规模最好是中型以上",
+        "expected_intent": "build_profile",
+        "expected_fields": {},
+        "min_completeness": 25
+      },
+      {
+        "id": "prof_011",
+        "input": "我的偏好：不接受加班，希望远程办公，薪资15K-20K",
+        "expected_intent": "build_profile",
+        "expected_fields": {},
+        "min_completeness": 30
+      },
+      {
+        "id": "prof_012",
+        "input": "补充一下我的信息：上海交大博士，专业是计算机视觉，想找CV算法岗",
+        "expected_intent": "build_profile",
+        "expected_fields": {"degree": "博士", "major": "计算机视觉", "school": "上海交通大学"},
+        "min_completeness": 40
+      }
+    ],
+    "job_analysis": [
+      {
+        "id": "job_001",
+        "input": "帮我分析：字节跳动 后端开发工程师 北京 30-50K Go微服务架构",
+        "expected_intent": "analyze_job",
+        "expected_company": "字节跳动",
+        "expected_risk_not": "critical",
+        "min_dimensions": 4
+      },
+      {
+        "id": "job_002",
+        "input": "看看这个岗位怎么样？阿里巴巴 算法工程师 杭州 35-60K 大模型方向",
+        "expected_intent": "analyze_job",
+        "expected_company": "阿里巴巴",
+        "expected_risk_not": "critical",
+        "min_dimensions": 4
+      },
+      {
+        "id": "job_003",
+        "input": "分析岗位：腾讯 前端开发工程师 深圳 25-45K React TypeScript",
+        "expected_intent": "analyze_job",
+        "expected_company": "腾讯",
+        "expected_risk_not": "critical",
+        "min_dimensions": 4
+      },
+      {
+        "id": "job_004",
+        "input": "帮忙看看这个岗位：某初创公司 AI产品经理 北京 15-25K 远程办公 弹性工作",
+        "expected_intent": "analyze_job",
+        "expected_company": null,
+        "expected_risk_not": null,
+        "min_dimensions": 3
+      },
+      {
+        "id": "job_005",
+        "input": "这是JD，帮我判断值不值得投递：【岗位】美团 数据开发工程师 北京 20-40K 要求熟悉Spark/Hive/Hadoop】",
+        "expected_intent": "analyze_job",
+        "expected_company": "美团",
+        "expected_risk_not": "critical",
+        "min_dimensions": 4
+      },
+      {
+        "id": "job_006",
+        "input": "分析这个岗位链接 https://www.zhipin.com/job_detail/xxx.html",
+        "expected_intent": "analyze_job",
+        "expected_company": null,
+        "expected_risk_not": null,
+        "min_dimensions": 2
+      },
+      {
+        "id": "job_007",
+        "input": "华为 测试开发工程师 东莞 18-30K 要求自动化测试经验",
+        "expected_intent": "analyze_job",
+        "expected_company": "华为",
+        "expected_risk_not": "critical",
+        "min_dimensions": 4
+      },
+      {
+        "id": "job_008",
+        "input": "拼多多 后端开发 上海 35-55K Java 要求抗压能力强 有创业精神",
+        "expected_intent": "analyze_job",
+        "expected_company": "拼多多",
+        "expected_risk_not": null,
+        "min_dimensions": 4
+      },
+      {
+        "id": "job_009",
+        "input": "帮忙分析这个岗位：Boss直聘上看到的，京东 安全工程师 北京 30-50K 网络安全方向",
+        "expected_intent": "analyze_job",
+        "expected_company": "京东",
+        "expected_risk_not": "critical",
+        "min_dimensions": 4
+      },
+      {
+        "id": "job_010",
+        "input": "这是猎头推的JD：某外资投行 Quant Developer 上海 年薪80-120万 C++ Python",
+        "expected_intent": "analyze_job",
+        "expected_company": null,
+        "expected_risk_not": "critical",
+        "min_dimensions": 4
+      },
+      {
+        "id": "job_011",
+        "input": "百度 AI Infra工程师 北京 40-70K 要求Kubernetes和分布式训练经验",
+        "expected_intent": "analyze_job",
+        "expected_company": "百度",
+        "expected_risk_not": "critical",
+        "min_dimensions": 4
+      },
+      {
+        "id": "job_012",
+        "input": "快手 推荐算法工程师 北京 45-80K 要求深度学习背景",
+        "expected_intent": "analyze_job",
+        "expected_company": "快手",
+        "expected_risk_not": "critical",
+        "min_dimensions": 4
+      },
+      {
+        "id": "job_013",
+        "input": "小红书 内容风控算法 上海 30-55K NLP方向 只看结果不计工时",
+        "expected_intent": "analyze_job",
+        "expected_company": "小红书",
+        "expected_risk_not": null,
+        "min_dimensions": 4
+      },
+      {
+        "id": "job_014",
+        "input": "看看这个JD有没有坑：某公司 运维开发 北京 15-25K 弹性工作制 薪资面议",
+        "expected_intent": "analyze_job",
+        "expected_company": null,
+        "expected_risk_not": null,
+        "min_dimensions": 3
+      },
+      {
+        "id": "job_015",
+        "input": "网易 游戏后端开发 广州 25-45K Go语言 要求5年以上经验",
+        "expected_intent": "analyze_job",
+        "expected_company": "网易",
+        "expected_risk_not": "critical",
+        "min_dimensions": 4
+      }
+    ],
+    "job_recommendation": [
+      {
+        "id": "rec_001",
+        "input": "帮我推荐适合我的岗位",
+        "expected_intent": "recommend_jobs",
+        "min_results": 1
+      },
+      {
+        "id": "rec_002",
+        "input": "匹配一下有什么工作适合我",
+        "expected_intent": "recommend_jobs",
+        "min_results": 1
+      },
+      {
+        "id": "rec_003",
+        "input": "根据我的画像推荐一些算法岗位",
+        "expected_intent": "recommend_jobs",
+        "min_results": 1
+      },
+      {
+        "id": "rec_004",
+        "input": "有什么后端开发的岗位推荐吗？最好是深圳或广州的",
+        "expected_intent": "recommend_jobs",
+        "min_results": 1
+      },
+      {
+        "id": "rec_005",
+        "input": "我画像已经完善了，给我推荐岗位吧",
+        "expected_intent": "recommend_jobs",
+        "min_results": 1
+      },
+      {
+        "id": "rec_006",
+        "input": "推荐一些北京的前端开发工作，React方向",
+        "expected_intent": "recommend_jobs",
+        "min_results": 1
+      },
+      {
+        "id": "rec_007",
+        "input": "帮我匹配一下有没有大厂的AI岗位",
+        "expected_intent": "recommend_jobs",
+        "min_results": 1
+      },
+      {
+        "id": "rec_008",
+        "input": "有什么适合应届生的岗位推荐吗",
+        "expected_intent": "recommend_jobs",
+        "min_results": 1
+      },
+      {
+        "id": "rec_009",
+        "input": "给我推几个匹配度高的工作",
+        "expected_intent": "recommend_jobs",
+        "min_results": 1
+      },
+      {
+        "id": "rec_010",
+        "input": "推荐工作：算法岗，薪资30K以上，只看上海",
+        "expected_intent": "recommend_jobs",
+        "min_results": 1
+      }
+    ],
+    "resume_generation": [
+      {
+        "id": "res_001",
+        "input": "帮我针对这个岗位生成简历",
+        "expected_intent": "generate_resume",
+        "min_sections": 3
+      },
+      {
+        "id": "res_002",
+        "input": "我要投字节跳动的后端岗，帮我写一份简历",
+        "expected_intent": "generate_resume",
+        "min_sections": 3
+      },
+      {
+        "id": "res_003",
+        "input": "针对阿里巴巴的算法岗生成一份简历",
+        "expected_intent": "generate_resume",
+        "min_sections": 3
+      },
+      {
+        "id": "res_004",
+        "input": "生成简历，目标岗位是腾讯的前端开发工程师",
+        "expected_intent": "generate_resume",
+        "min_sections": 3
+      },
+      {
+        "id": "res_005",
+        "input": "帮我生成一份针对百度AI岗位的简历，突出我的算法能力",
+        "expected_intent": "generate_resume",
+        "min_sections": 3
+      },
+      {
+        "id": "res_006",
+        "input": "写简历，我要投美团的Java后端岗",
+        "expected_intent": "generate_resume",
+        "min_sections": 3
+      },
+      {
+        "id": "res_007",
+        "input": "针对快手的推荐算法岗位生成一份针对性简历",
+        "expected_intent": "generate_resume",
+        "min_sections": 3
+      },
+      {
+        "id": "res_008",
+        "input": "帮我针对华为的测试开发岗写份简历",
+        "expected_intent": "generate_resume",
+        "min_sections": 3
+      }
+    ],
+    "edge_cases": [
+      {
+        "id": "edge_001",
+        "input": "你好",
+        "expected_intent": "build_profile",
+        "description": "简单问候应引导画像"
+      },
+      {
+        "id": "edge_002",
+        "input": "谢谢你的帮助",
+        "expected_intent": "build_profile",
+        "description": "感谢消息应引导继续画像"
+      },
+      {
+        "id": "edge_003",
+        "input": "",
+        "expected_intent": "build_profile",
+        "description": "空输入不应崩溃，返回默认意图"
+      },
+      {
+        "id": "edge_004",
+        "input": "   ",
+        "expected_intent": "build_profile",
+        "description": "纯空白输入不应崩溃"
+      },
+      {
+        "id": "edge_005",
+        "input": "？？？？",
+        "expected_intent": "build_profile",
+        "description": "无意义标点输入不应崩溃"
+      },
+      {
+        "id": "edge_006",
+        "input": "我今天心情不好不想找工作就是来看看",
+        "expected_intent": "build_profile",
+        "description": "非求职意图应回退到画像引导"
+      },
+      {
+        "id": "edge_007",
+        "input": "你能做什么？",
+        "expected_intent": "build_profile",
+        "description": "功能询问应引导开始使用"
+      },
+      {
+        "id": "edge_008",
+        "input": "帮我看看",
+        "expected_intent": "build_profile",
+        "description": "模糊指令应引导明确意图"
+      }
+    ]
+  }
+}
