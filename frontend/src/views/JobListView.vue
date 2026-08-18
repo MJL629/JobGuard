@@ -1,196 +1,169 @@
 <template>
   <div class="job-list-view">
     <div class="page-header">
-      <h2>Job Recommendations</h2>
-      <el-tag type="success">12 jobs available</el-tag>
-    </div>
-
-    <!-- Filter Bar -->
-    <div class="filter-bar">
-      <el-select v-model="category" placeholder="Category" clearable style="width: 160px">
-        <el-option label="Engineering" value="engineering" />
-        <el-option label="Algorithm" value="algorithm" />
-        <el-option label="Product/Data/Test" value="product_data_testing" />
-        <el-option label="Security" value="security" />
-      </el-select>
-      <el-select v-model="subCategory" placeholder="Sub-category" clearable style="width: 150px">
-        <el-option label="Backend" value="backend" />
-        <el-option label="Frontend" value="frontend" />
-        <el-option label="Full Stack" value="fullstack" />
-        <el-option label="AI Infra" value="ai_infra" />
-        <el-option label="DevOps" value="devops" />
-        <el-option label="LLM Algorithm" value="llm_algo" />
-        <el-option label="Agent Algorithm" value="agent_algo" />
-        <el-option label="Data Analysis" value="data_analysis" />
-        <el-option label="AI Product Manager" value="ai_pm" />
-      </el-select>
-      <el-select v-model="location" placeholder="Location" clearable style="width: 130px">
-        <el-option label="Beijing" value="beijing" />
-        <el-option label="Shanghai" value="shanghai" />
-        <el-option label="Hangzhou" value="hangzhou" />
-        <el-option label="Shenzhen" value="shenzhen" />
-        <el-option label="Guangzhou" value="guangzhou" />
-      </el-select>
-      <el-input-number v-model="salaryMin" :min="0" :step="5000" placeholder="Min salary" style="width: 150px" />
-      <el-button type="primary" :icon="Search">Search</el-button>
-      <el-button :icon="Refresh" @click="loadJobs">Refresh</el-button>
-    </div>
-
-    <!-- Job Cards -->
-    <div class="job-cards">
-      <div class="job-card" v-for="job in jobs" :key="job.id">
-        <div class="card-main">
-          <div class="card-left">
-            <div class="card-title">{{ job.job_title }}</div>
-            <div class="card-company">
-              <el-icon><OfficeBuilding /></el-icon>
-              {{ job.company_name }}
-            </div>
-            <div class="card-tags">
-              <el-tag size="small" v-if="job.sub_category">{{ job.sub_category }}</el-tag>
-              <el-tag size="small" type="info" v-if="job.location">
-                <el-icon><Location /></el-icon> {{ job.location }}
-              </el-tag>
-              <el-tag size="small" type="warning" v-if="job.salary_min">
-                {{ formatSalary(job.salary_min) }}-{{ formatSalary(job.salary_max) }}
-              </el-tag>
-            </div>
-          </div>
-          <div class="card-right">
-            <div class="match-score" v-if="job.match_score">
-              <el-progress type="circle" :percentage="job.match_score" :width="60" :color="matchColor(job.match_score)" />
-              <span class="match-label">Match</span>
-            </div>
-            <div class="card-actions">
-              <el-button size="small" type="primary" @click="analyzeJob(job)">Analyze</el-button>
-              <el-button size="small" @click="generateResume(job)">Resume</el-button>
-            </div>
-          </div>
-        </div>
-        <div class="card-requirements" v-if="job.requirements && job.requirements.length">
-          <el-tag size="small" v-for="req in job.requirements.slice(0, 6)" :key="req" class="req-tag" effect="plain">{{ req }}</el-tag>
-        </div>
+      <div>
+        <h2>岗位推荐</h2>
+        <p>岗位来自数据库；只对有证据的方向、城市、薪资和技能评分，未知项不再计中性分。</p>
+      </div>
+      <div class="header-tags">
+        <el-tag type="success">{{ total }} 个岗位</el-tag>
+        <el-tag v-if="mode === 'recommend'" type="info">画像完整度 {{ profileCompleteness }}%</el-tag>
       </div>
     </div>
 
-    <!-- Pagination -->
-    <div class="pagination-wrap" v-if="total > pageSize">
-      <el-pagination
-        v-model:current-page="page"
-        :page-size="pageSize"
-        :total="total"
-        layout="prev, pager, next"
-        @current-change="loadJobs"
-      />
+    <section class="filter-bar">
+      <el-radio-group v-model="mode" @change="switchMode">
+        <el-radio-button value="recommend">按画像推荐</el-radio-button>
+        <el-radio-button value="all">全部岗位</el-radio-button>
+      </el-radio-group>
+      <el-input v-model="subCategory" placeholder="岗位方向" clearable style="width: 150px" />
+      <el-input v-model="location" placeholder="工作城市" clearable style="width: 130px" />
+      <el-input-number v-model="salaryMin" :min="0" :step="1000" placeholder="最低薪资" style="width: 150px" />
+      <el-button type="primary" @click="searchJobs">筛选</el-button>
+      <el-button @click="resetFilters">重置</el-button>
+    </section>
+
+    <el-alert v-if="errorMessage" :title="errorMessage" type="error" show-icon :closable="false" />
+
+    <div v-loading="loading" class="job-cards">
+      <el-empty v-if="!loading && !jobs.length" description="没有找到符合条件的岗位" />
+      <article v-for="job in jobs" :key="job.id" class="job-card">
+        <div class="card-main">
+          <div class="card-content">
+            <h3>{{ job.job_title }}</h3>
+            <p class="company">{{ job.company_name }}</p>
+            <div class="card-tags">
+              <el-tag v-if="job.sub_category" size="small">{{ job.sub_category }}</el-tag>
+              <el-tag v-if="job.location" size="small" type="info">{{ job.location }}</el-tag>
+              <el-tag v-if="job.source_type === 'beijing_hr_open_data'" size="small" type="success">北京市人社公开数据</el-tag>
+              <el-tag v-if="job.salary_min || job.salary_max" size="small" type="warning">
+                {{ formatSalary(job.salary_min) }} - {{ formatSalary(job.salary_max) }}
+              </el-tag>
+            </div>
+            <div v-if="job.posted_at || job.expires_at || job.source_url" class="source-meta">
+              <span v-if="job.posted_at">发布：{{ formatDate(job.posted_at) }}</span>
+              <span v-if="job.expires_at">截止：{{ formatDate(job.expires_at) }}</span>
+              <a v-if="job.source_url" :href="job.source_url" target="_blank" rel="noopener noreferrer">查看官方来源</a>
+            </div>
+            <div v-if="job.requirements?.length" class="requirements">
+              <span v-for="requirement in job.requirements.slice(0, 6)" :key="requirement">{{ requirement }}</span>
+            </div>
+          </div>
+
+          <div class="card-side">
+            <div v-if="job.match_score !== undefined && job.match_score !== null" class="match-score">
+              <strong>{{ job.match_score }}%</strong>
+              <span>画像匹配</span>
+            </div>
+            <div v-else-if="job.match_score === null" class="match-score pending-score">
+              <strong>暂不评分</strong>
+              <span>证据覆盖 {{ job.evidence_coverage || 0 }}%</span>
+            </div>
+            <el-tag v-if="job.hard_constraint_status === 'conflict'" type="danger" size="small">存在硬条件冲突</el-tag>
+            <el-tag v-else-if="job.match_score !== undefined" type="info" size="small">证据覆盖 {{ job.evidence_coverage || 0 }}%</el-tag>
+            <div class="actions">
+              <el-button type="primary" size="small" @click="openAnalysis(job)">避雷分析</el-button>
+              <el-button size="small" @click="openResume(job)">定向简历</el-button>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="job.match_reasons?.length || job.match_concerns?.length" class="explanation">
+          <div v-if="job.match_reasons?.length" class="reason">匹配：{{ job.match_reasons.join('；') }}</div>
+          <div v-if="job.match_concerns?.length" class="concern">需确认：{{ job.match_concerns.join('；') }}</div>
+        </div>
+      </article>
+    </div>
+
+    <div v-if="total > pageSize" class="pagination-wrap">
+      <el-pagination v-model:current-page="page" :page-size="pageSize" :total="total" layout="prev, pager, next" @current-change="loadJobs" />
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { listJobs, recommendJobs } from '../api/jobs'
 
 const router = useRouter()
-const category = ref('')
+const mode = ref('recommend')
 const subCategory = ref('')
 const location = ref('')
 const salaryMin = ref(null)
 const page = ref(1)
-const pageSize = ref(20)
-const total = ref(12)
+const pageSize = 20
+const total = ref(0)
+const profileCompleteness = ref(0)
+const jobs = ref([])
+const loading = ref(false)
+const errorMessage = ref('')
 
-const jobs = ref([
-  {
-    id: 1, company_name: 'TechCorp Ltd.', job_title: 'Java Backend Developer',
-    sub_category: 'Backend', location: 'Beijing', salary_min: 15000, salary_max: 25000,
-    match_score: 88,
-    requirements: ['Java', 'Spring Boot', 'MySQL', 'Redis', 'Microservices', 'Docker'],
-  },
-  {
-    id: 2, company_name: 'WebCo Tech', job_title: 'Frontend Developer (React)',
-    sub_category: 'Frontend', location: 'Hangzhou', salary_min: 12000, salary_max: 20000,
-    match_score: 72,
-    requirements: ['React', 'TypeScript', 'CSS', 'Webpack', 'Node.js'],
-  },
-  {
-    id: 3, company_name: 'AI Labs', job_title: 'LLM Application Engineer',
-    sub_category: 'LLM Algorithm', location: 'Beijing', salary_min: 25000, salary_max: 40000,
-    match_score: 65,
-    requirements: ['Python', 'PyTorch', 'LangChain', 'RAG', 'Prompt Engineering'],
-  },
-  {
-    id: 4, company_name: 'DataFlow Inc.', job_title: 'Backend Engineer (Go)',
-    sub_category: 'Backend', location: 'Shanghai', salary_min: 18000, salary_max: 30000,
-    match_score: 81,
-    requirements: ['Go', 'gRPC', 'Kubernetes', 'PostgreSQL', 'Kafka'],
-  },
-  {
-    id: 5, company_name: 'CloudBase', job_title: 'DevOps Engineer',
-    sub_category: 'DevOps', location: 'Shenzhen', salary_min: 20000, salary_max: 35000,
-    match_score: 58,
-    requirements: ['Docker', 'Kubernetes', 'CI/CD', 'Terraform', 'AWS'],
-  },
-  {
-    id: 6, company_name: 'SafeNet', job_title: 'Security Engineer',
-    sub_category: 'Cybersecurity', location: 'Beijing', salary_min: 22000, salary_max: 35000,
-    match_score: 45,
-    requirements: ['Network Security', 'Penetration Testing', 'WAF', 'SIEM'],
-  },
-])
+const hasFilters = () => Boolean(subCategory.value || location.value || salaryMin.value)
 
-const loadJobs = () => { /* API call placeholder */ }
-
-const analyzeJob = (job) => {
-  router.push({ name: 'JobAnalysis', query: { job: job.job_title, company: job.company_name } })
+const loadJobs = async () => {
+  loading.value = true
+  errorMessage.value = ''
+  try {
+    let response
+    if (mode.value === 'recommend' && !hasFilters()) {
+      response = await recommendJobs({ page: page.value, page_size: pageSize })
+      profileCompleteness.value = response.data.profile_completeness || 0
+    } else {
+      response = await listJobs({
+        sub_category: subCategory.value || undefined,
+        location: location.value || undefined,
+        salary_min: salaryMin.value || undefined,
+        page: page.value,
+        page_size: pageSize,
+      })
+    }
+    jobs.value = response.data.items || []
+    total.value = response.data.total || 0
+  } catch (error) {
+    errorMessage.value = error.response?.data?.detail || '岗位加载失败，请稍后重试'
+    jobs.value = []
+    total.value = 0
+  } finally {
+    loading.value = false
+  }
 }
 
-const generateResume = (job) => {
-  router.push({ name: 'Resume', query: { job: job.job_title } })
+const switchMode = () => { page.value = 1; loadJobs() }
+const searchJobs = () => { page.value = 1; loadJobs() }
+const resetFilters = () => {
+  subCategory.value = ''
+  location.value = ''
+  salaryMin.value = null
+  page.value = 1
+  loadJobs()
 }
 
-const formatSalary = (val) => {
-  if (!val) return '?'
-  return (val / 1000).toFixed(0) + 'K'
-}
+const openAnalysis = (job) => router.push({ name: 'JobAnalysis', params: { id: job.id } })
+const openResume = (job) => router.push({ name: 'Resume', query: { jobId: job.id } })
+const formatSalary = (value) => value ? `${Math.round(value / 1000)}K` : '面议'
+const formatDate = (value) => value ? String(value).slice(0, 10) : '未知'
 
-const matchColor = (score) => {
-  if (score >= 80) return '#67c23a'
-  if (score >= 60) return '#409eff'
-  return '#e6a23c'
-}
+onMounted(loadJobs)
 </script>
 
 <style scoped>
-.job-list-view { max-width: 900px; margin: 0 auto; }
-.page-header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
-.page-header h2 { font-size: 20px; color: #303133; }
-
-.filter-bar {
-  display: flex; gap: 10px; flex-wrap: wrap;
-  padding: 16px; background: #fff; border-radius: 8px;
-  margin-bottom: 16px; box-shadow: 0 1px 6px rgba(0,0,0,0.06);
-}
-
-.job-cards { display: flex; flex-direction: column; gap: 12px; }
-
-.job-card {
-  background: #fff; border-radius: 8px; padding: 16px 20px;
-  box-shadow: 0 1px 6px rgba(0,0,0,0.06);
-  transition: box-shadow 0.2s;
-}
-.job-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
-
-.card-main { display: flex; justify-content: space-between; align-items: flex-start; }
-.card-title { font-size: 16px; font-weight: 600; color: #303133; margin-bottom: 4px; }
-.card-company { font-size: 13px; color: #909399; display: flex; align-items: center; gap: 4px; margin-bottom: 8px; }
-.card-tags { display: flex; gap: 6px; flex-wrap: wrap; }
-
-.card-right { display: flex; align-items: center; gap: 16px; }
-.match-label { font-size: 11px; color: #909399; display: block; text-align: center; margin-top: 2px; }
-.card-actions { display: flex; gap: 6px; }
-
-.card-requirements { margin-top: 12px; display: flex; gap: 6px; flex-wrap: wrap; }
-.req-tag { font-size: 12px; }
-
-.pagination-wrap { margin-top: 20px; display: flex; justify-content: center; }
+.job-list-view { max-width: 960px; margin: 0 auto; }
+.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+.page-header h2 { margin: 0 0 6px; }.page-header p { margin: 0; color: #909399; font-size: 13px; }
+.header-tags { display: flex; gap: 8px; }.filter-bar { display: flex; flex-wrap: wrap; gap: 10px; padding: 16px; background: #fff; border-radius: 10px; margin-bottom: 16px; box-shadow: 0 1px 8px rgba(0,0,0,.06); }
+.job-cards { min-height: 180px; display: flex; flex-direction: column; gap: 12px; margin-top: 16px; }
+.job-card { background: #fff; padding: 18px 20px; border-radius: 10px; box-shadow: 0 1px 8px rgba(0,0,0,.06); }
+.card-main { display: flex; justify-content: space-between; gap: 20px; }.card-content { min-width: 0; flex: 1; }
+.card-content h3 { margin: 0 0 6px; color: #303133; }.company { margin: 0 0 10px; color: #606266; }
+.card-tags, .requirements { display: flex; flex-wrap: wrap; gap: 6px; }.requirements { margin-top: 10px; }
+.requirements span { padding: 3px 8px; background: #f5f7fa; border-radius: 4px; color: #606266; font-size: 12px; }
+.source-meta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 9px; color: #909399; font-size: 12px; }
+.source-meta a { color: #409eff; text-decoration: none; }.source-meta a:hover { text-decoration: underline; }
+.card-side { min-width: 145px; display: flex; flex-direction: column; align-items: flex-end; gap: 14px; }
+.match-score { display: flex; flex-direction: column; align-items: flex-end; }.match-score strong { color: #409eff; font-size: 24px; }.match-score span { color: #909399; font-size: 12px; }
+.pending-score strong { color: #909399; font-size: 17px; }
+.actions { display: flex; gap: 6px; }.explanation { margin-top: 14px; padding-top: 12px; border-top: 1px solid #ebeef5; font-size: 12px; line-height: 1.7; }
+.reason { color: #529b2e; }.concern { color: #b88230; }.pagination-wrap { display: flex; justify-content: center; margin-top: 20px; }
+@media (max-width: 700px) { .card-main { flex-direction: column; }.card-side { align-items: flex-start; }.match-score { align-items: flex-start; } }
 </style>

@@ -29,6 +29,7 @@ class User(Base):
     skills = relationship("UserSkill", back_populates="user")
     education = relationship("Education", back_populates="user")
     preferences = relationship("UserPreference", back_populates="user", uselist=False)
+    experiences = relationship("UserExperience", back_populates="user")
 
 
 class UserProfile(Base):
@@ -50,6 +51,7 @@ class UserProfile(Base):
     resume_raw_text = Column(Text, comment="原始简历文本")
     resume_file_path = Column(String(500), comment="简历文件路径")
     profile_completeness = Column(Integer, default=0, comment="画像完整度 0-100")
+    interview_memory = Column(JSON, comment="跨会话画像深挖进度与已探索维度")
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -125,3 +127,30 @@ class UserPreference(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     user = relationship("User", back_populates="preferences")
+
+
+class UserExperience(Base):
+    """不局限于简历项目的真实经历：项目、实习、比赛、科研等。"""
+
+    __tablename__ = "user_experiences"
+
+    id = Column(BigInteger().with_variant(Integer, "sqlite"), primary_key=True, autoincrement=True)
+    user_id = Column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    source_resume_id = Column(BigInteger, ForeignKey("user_resumes.id", ondelete="SET NULL"))
+    experience_type = Column(String(30), nullable=False, default="project")
+    title = Column(String(200), nullable=False)
+    organization = Column(String(200))
+    role = Column(String(100))
+    description = Column(Text)
+    actions = Column(Text)
+    achievements = Column(Text)
+    tech_stack = Column(JSON)
+    start_date = Column(String(20))
+    end_date = Column(String(20))
+    evidence_text = Column(Text, comment="用户原话或简历原文中的最小事实依据")
+    verification_status = Column(String(30), default="user_confirmed")
+    sort_order = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = relationship("User", back_populates="experiences")

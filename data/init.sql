@@ -41,6 +41,54 @@ CREATE TABLE IF NOT EXISTS user_profiles (
     INDEX idx_user_id (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户画像表';
 
+-- 用户原始简历表（允许一名用户保存多份）
+CREATE TABLE IF NOT EXISTS user_resumes (
+    id               BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id          BIGINT       NOT NULL,
+    original_name    VARCHAR(255) NOT NULL,
+    stored_path      VARCHAR(500) NOT NULL,
+    sha256           VARCHAR(64)  NOT NULL,
+    media_type       VARCHAR(120) NOT NULL,
+    parser           VARCHAR(100),
+    ocr_used         BOOLEAN      NOT NULL DEFAULT FALSE,
+    extracted_text   MEDIUMTEXT,
+    extracted_chars  INT          NOT NULL DEFAULT 0,
+    structured_data  JSON,
+    parse_status     VARCHAR(30)  NOT NULL DEFAULT 'pending',
+    parse_error      TEXT,
+    is_primary       BOOLEAN      NOT NULL DEFAULT FALSE,
+    created_at       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY uq_user_resumes_user_sha256 (user_id, sha256),
+    INDEX ix_user_resumes_user_id (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户多简历原始文件与解析记录';
+
+-- 通用真实经历表（项目、实习、比赛、科研、工作等）
+CREATE TABLE IF NOT EXISTS user_experiences (
+    id                  BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id             BIGINT       NOT NULL,
+    source_resume_id    BIGINT,
+    experience_type     VARCHAR(30)  NOT NULL DEFAULT 'project',
+    title               VARCHAR(200) NOT NULL,
+    organization        VARCHAR(200),
+    role                VARCHAR(100),
+    description         TEXT,
+    actions             TEXT,
+    achievements        TEXT,
+    tech_stack          JSON,
+    start_date          VARCHAR(20),
+    end_date            VARCHAR(20),
+    evidence_text       TEXT,
+    verification_status VARCHAR(30) DEFAULT 'user_confirmed',
+    sort_order          INT DEFAULT 0,
+    created_at          DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at          DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (source_resume_id) REFERENCES user_resumes(id) ON DELETE SET NULL,
+    INDEX ix_user_experiences_user_id (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户可核验真实经历';
+
 -- 用户项目经历表
 CREATE TABLE IF NOT EXISTS user_projects (
     id              BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -129,6 +177,33 @@ CREATE TABLE IF NOT EXISTS companies (
     INDEX idx_risk_level (risk_level)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='企业信息表';
 
+-- 企业背调证据表：所有外部事实必须绑定可核验来源
+CREATE TABLE IF NOT EXISTS company_evidence (
+    id                  BIGINT AUTO_INCREMENT PRIMARY KEY,
+    company_id          BIGINT       NOT NULL COMMENT '企业ID',
+    company_name        VARCHAR(200) NOT NULL COMMENT '查询时使用的企业名称',
+    evidence_type       VARCHAR(50)  NOT NULL COMMENT '证据类型',
+    source_kind         VARCHAR(30)  NOT NULL COMMENT 'official/job_board/media/user_provided',
+    source_name         VARCHAR(200) NOT NULL COMMENT '来源名称',
+    source_url          VARCHAR(1000) NOT NULL COMMENT '可核验来源链接',
+    title               VARCHAR(300) NOT NULL COMMENT '证据标题',
+    content_excerpt     TEXT         COMMENT '支持结论的最小必要原文摘录',
+    structured_data     JSON         COMMENT '来源中直接提取的结构化字段',
+    source_hash         VARCHAR(64)  NOT NULL COMMENT '幂等来源指纹',
+    is_verified         TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '是否为白名单官方来源',
+    verification_level  VARCHAR(30)  NOT NULL DEFAULT 'reported',
+    published_at        DATETIME     COMMENT '来源发布时间',
+    observed_at         DATETIME     NOT NULL COMMENT '采集时间',
+    created_by_user_id  BIGINT       COMMENT '录入用户ID',
+    created_at          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+    FOREIGN KEY (created_by_user_id) REFERENCES users(id) ON DELETE SET NULL,
+    UNIQUE KEY uq_company_evidence_source_hash (source_hash),
+    INDEX idx_company_evidence_company_type (company_id, evidence_type),
+    INDEX idx_company_evidence_observed (observed_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='企业背调证据表';
+
 -- 岗位信息表
 CREATE TABLE IF NOT EXISTS jobs (
     id              BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -145,7 +220,11 @@ CREATE TABLE IF NOT EXISTS jobs (
     benefits        JSON         COMMENT '福利待遇',
     source_url      VARCHAR(1000) COMMENT '来源链接',
     source_type     VARCHAR(50)  COMMENT '来源平台',
+    source_external_id VARCHAR(255) COMMENT '来源平台岗位ID',
+    source_published_at DATETIME COMMENT '来源平台发布时间',
     posted_at       DATETIME     COMMENT '发布日期',
+    expires_at      DATETIME     COMMENT '岗位有效期截止时间',
+    last_seen_at    DATETIME     COMMENT '最后一次在来源中观测到的时间',
     is_active       TINYINT(1)   DEFAULT 1 COMMENT '是否有效',
     created_at      DATETIME     DEFAULT CURRENT_TIMESTAMP,
     updated_at      DATETIME     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -153,7 +232,10 @@ CREATE TABLE IF NOT EXISTS jobs (
     INDEX idx_category (job_category, sub_category),
     INDEX idx_company (company_name),
     INDEX idx_location (location),
-    INDEX idx_posted (posted_at)
+    INDEX idx_posted (posted_at),
+    INDEX idx_jobs_expires_at (expires_at),
+    INDEX idx_jobs_last_seen_at (last_seen_at),
+    UNIQUE KEY uq_jobs_source_external_id (source_type, source_external_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='岗位信息表';
 
 -- 岗位分析记录表
@@ -187,6 +269,8 @@ CREATE TABLE IF NOT EXISTS generated_resumes (
     selected_projects   JSON         COMMENT '选中的项目ID及排序',
     self_evaluation     TEXT         COMMENT '自我评价段落',
     pdf_path            VARCHAR(500) COMMENT 'PDF文件路径',
+    docx_path           VARCHAR(500) COMMENT 'DOCX文件路径',
+    template_id         VARCHAR(50)  DEFAULT 'template-01' COMMENT '生成模板ID',
     version             INT          DEFAULT 1 COMMENT '版本号',
     created_at          DATETIME     DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,

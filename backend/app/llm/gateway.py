@@ -5,6 +5,7 @@ LLM 统一调用网关
 骨架阶段：未配置 API Key 时返回 mock 响应，保证系统可启动可调试。
 """
 
+import base64
 import os
 import logging
 from typing import Optional, AsyncGenerator
@@ -204,6 +205,40 @@ class LLMGateway:
     ) -> str | AsyncGenerator[str, None]:
         """使用主力模型（智谱 GLM-4-Flash）"""
         return await self.chat(messages, provider="zhipu", stream=stream)
+
+    async def vision(
+        self,
+        image_bytes: bytes,
+        media_type: str,
+        prompt: str,
+        model: str = "glm-4v-flash",
+    ) -> str:
+        """Analyze an image with Zhipu's multimodal chat endpoint.
+
+        The standard provider credential already configured for text chat is
+        reused in memory; image bytes and credentials are never persisted by
+        this gateway.
+        """
+        if self._is_mock("zhipu"):
+            raise RuntimeError("视觉模型尚未配置")
+        client = self._clients["zhipu"]
+        encoded = base64.b64encode(image_bytes).decode("ascii")
+        response = await client.chat.completions.create(
+            model=model,
+            messages=[{
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt},
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": f"data:{media_type};base64,{encoded}"},
+                    },
+                ],
+            }],
+            temperature=0.1,
+            max_tokens=4096,
+        )
+        return response.choices[0].message.content or ""
 
     async def chat_reasoning(
         self,

@@ -1,278 +1,251 @@
-"""
-Tool Registry — 统一管理所有 Agent 工具
+"""Executable Agent tool registry with safety and HITL metadata."""
 
-提供工具的注册、查询、分类和格式转换功能。
-支持 OpenAI Function Calling 格式输出。
-"""
+from __future__ import annotations
 
+import inspect
 import json
 import logging
-from dataclasses import dataclass, field
-from typing import Callable, Any, Optional
+from dataclasses import dataclass
+from typing import Any, Callable, Optional
+
+from app.agents.tools.career_tools import (
+    analyze_job_requirements,
+    build_company_verification_plan,
+    generate_targeted_resume,
+    inspect_profile_gaps,
+    recommend_jobs_for_profile,
+    recommend_learning_resources,
+    search_job_database,
+)
+from app.agents.tools.company_evidence import search_company_info
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass
 class Tool:
-    """单个工具定义"""
+    """One callable capability and its execution policy."""
+
     name: str
     description: str
-    parameters: dict          # JSON Schema 格式的参数定义
-    func: Optional[Callable] = None  # 异步或同步函数，后续由 API 层注入
-    category: str = "general"  # search / parse / generate / analyze
+    parameters: dict
+    func: Optional[Callable] = None
+    category: str = "general"
+    execution_mode: str = "read_only"
+    risk_level: str = "low"
+    requires_confirmation: bool = False
+    inject_user_id: bool = False
+    expose_via_mcp: bool = True
+
+    @property
+    def is_available(self) -> bool:
+        return self.func is not None
 
 
 class ToolRegistry:
-    """
-    工具注册中心。
-
-    统一管理所有 Agent 可用的工具，提供：
-    - 注册 / 查询工具
-    - 按分类筛选
-    - 导出为 OpenAI Function Calling 格式
-    - 生成人类可读的工具列表
-    """
+    """Register, describe, validate and execute real tools."""
 
     def __init__(self):
         self._tools: dict[str, Tool] = {}
         self._register_builtin_tools()
 
-    # ─── 注册 ──────────────────────────────────────────────────────────
-
     def register(self, tool: Tool) -> None:
-        """注册一个工具（同名工具会被覆盖）"""
         if tool.name in self._tools:
-            logger.warning(f"[ToolRegistry] 工具 '{tool.name}' 已存在，将被覆盖")
+            logger.warning("[ToolRegistry] 工具 '%s' 已存在，将被覆盖", tool.name)
         self._tools[tool.name] = tool
-        logger.info(f"[ToolRegistry] 注册工具: {tool.name} (category={tool.category})")
-
-    # ─── 查询 ──────────────────────────────────────────────────────────
 
     def get(self, name: str) -> Optional[Tool]:
-        """按名称获取工具"""
         return self._tools.get(name)
 
     def list_all(self) -> list[Tool]:
-        """获取所有已注册工具"""
         return list(self._tools.values())
 
     def list_by_category(self, category: str) -> list[Tool]:
-        """按分类获取工具列表"""
-        return [t for t in self._tools.values() if t.category == category]
+        return [item for item in self.list_available() if item.category == category]
+
+    def list_available(self) -> list[Tool]:
+        return [item for item in self._tools.values() if item.is_available]
+
+    def list_mcp_tools(self) -> list[Tool]:
+        return [item for item in self.list_available() if item.expose_via_mcp]
 
     def list_categories(self) -> list[str]:
-        """获取所有工具分类"""
-        return sorted(set(t.category for t in self._tools.values()))
-
-    # ─── 格式转换 ──────────────────────────────────────────────────────
+        return sorted({item.category for item in self.list_available()})
 
     def get_openai_tools(self) -> list[dict]:
-        """
-        将所有工具转为 OpenAI Function Calling 格式。
-
-        Returns:
-            [{"type": "function", "function": {"name": "...", "description": "...", "parameters": {...}}}]
-        """
-        result = []
-        for tool in self._tools.values():
-            result.append({
+        return [
+            {
                 "type": "function",
                 "function": {
-                    "name": tool.name,
-                    "description": tool.description,
-                    "parameters": tool.parameters,
+                    "name": item.name,
+                    "description": item.description,
+                    "parameters": item.parameters,
                 },
-            })
-        return result
+            }
+            for item in self.list_available()
+        ]
 
     def get_tools_description(self) -> str:
-        """
-        生成人类可读的工具列表描述，供 Planner prompt 使用。
-
-        Returns:
-            格式化的工具描述字符串
-        """
-        lines = []
-        categories = self.list_categories()
-        for cat in categories:
-            lines.append(f"## {cat.upper()}")
-            for tool in self.list_by_category(cat):
-                params_str = json.dumps(tool.parameters, ensure_ascii=False, indent=2)
-                lines.append(f"  - {tool.name}: {tool.description}")
-                lines.append(f"    参数: {params_str}")
+        lines: list[str] = []
+        for category in self.list_categories():
+            lines.append(f"## {category.upper()}")
+            for item in self.list_by_category(category):
+                lines.append(f"- {item.name}: {item.description}")
+                lines.append(f"  参数: {json.dumps(item.parameters, ensure_ascii=False)}")
+                lines.append(
+                    f"  执行策略: {item.execution_mode}; 风险={item.risk_level}; "
+                    f"人工确认={'需要' if item.requires_confirmation else '不需要'}"
+                )
         return "\n".join(lines)
 
     def get_tool_names(self) -> list[str]:
-        """获取所有工具名称列表"""
-        return list(self._tools.keys())
+        return [item.name for item in self.list_available()]
 
-    # ─── 内置工具注册 ──────────────────────────────────────────────────
+    async def execute(
+        self,
+        name: str,
+        arguments: dict[str, Any] | None = None,
+        *,
+        user_id: int | None = None,
+        confirmed: bool = False,
+    ) -> Any:
+        tool = self.get(name)
+        if not tool or not tool.is_available:
+            raise KeyError("工具不存在或尚未接通")
+        if tool.requires_confirmation and not confirmed:
+            return {
+                "tool_name": name,
+                "status": "confirmation_required",
+                "message": "此操作会写入业务数据，请用户确认后再执行。",
+            }
+        supplied = dict(arguments or {})
+        self._validate_arguments(tool, supplied)
+        if tool.inject_user_id:
+            if user_id is None:
+                raise PermissionError("此工具必须在登录态下执行")
+            supplied["user_id"] = user_id
+        result = tool.func(**supplied)
+        if inspect.isawaitable(result):
+            result = await result
+        return result
+
+    @staticmethod
+    def _validate_arguments(tool: Tool, arguments: dict[str, Any]) -> None:
+        schema = tool.parameters or {}
+        properties = schema.get("properties") or {}
+        required = set(schema.get("required") or [])
+        missing = sorted(required - set(arguments))
+        if missing:
+            raise ValueError(f"缺少必填参数：{', '.join(missing)}")
+        unknown = sorted(set(arguments) - set(properties))
+        if unknown:
+            raise ValueError(f"不支持的参数：{', '.join(unknown)}")
+        for key, value in arguments.items():
+            spec = properties.get(key) or {}
+            expected = spec.get("type")
+            if expected == "integer" and (not isinstance(value, int) or isinstance(value, bool)):
+                raise ValueError(f"参数 {key} 必须是整数")
+            if expected == "string" and not isinstance(value, str):
+                raise ValueError(f"参数 {key} 必须是字符串")
+            if "enum" in spec and value not in spec["enum"]:
+                raise ValueError(f"参数 {key} 不在允许范围内")
 
     def _register_builtin_tools(self) -> None:
-        """预注册所有内置工具（func 先设为 None，由 API 层注入实际实现）"""
+        object_schema = lambda properties, required=(): {
+            "type": "object",
+            "properties": properties,
+            "required": list(required),
+            "additionalProperties": False,
+        }
 
-        # --- SEARCH ---
         self.register(Tool(
             name="search_company_info",
-            description="搜索企业公开信息，包括工商注册、社保缴纳、劳动仲裁、行政处罚等记录。",
-            parameters={
-                "type": "object",
-                "properties": {
-                    "company_name": {
-                        "type": "string",
-                        "description": "企业全称或统一社会信用代码",
-                    },
-                    "query_type": {
-                        "type": "string",
-                        "enum": ["basic", "social_security", "labor_arbitration", "punishment", "all"],
-                        "description": "查询类型：basic=基础工商信息, social_security=社保信息, labor_arbitration=劳动仲裁, punishment=行政处罚, all=全部",
-                        "default": "all",
-                    },
+            description="查询已落库的企业证据；每条事实包含来源，缺失字段保持 unknown。",
+            parameters=object_schema({
+                "company_name": {"type": "string", "description": "企业全称"},
+                "query_type": {
+                    "type": "string",
+                    "enum": ["basic", "social_security", "labor_arbitration", "punishment", "official_jobs", "all"],
+                    "default": "all",
                 },
-                "required": ["company_name"],
-            },
+            }, ["company_name"]),
+            func=search_company_info,
+            category="evidence",
+        ))
+        self.register(Tool(
+            name="search_job_database",
+            description="搜索 MySQL 中仍有效的真实岗位并返回原始来源链接。",
+            parameters=object_schema({
+                "keywords": {"type": "string", "default": ""},
+                "location": {"type": "string", "default": ""},
+                "limit": {"type": "integer", "default": 10},
+                "source_kind": {
+                    "type": "string",
+                    "enum": ["all", "official", "job_board"],
+                    "default": "all",
+                },
+            }),
+            func=search_job_database,
             category="search",
         ))
-
         self.register(Tool(
-            name="web_search",
-            description="通用网络搜索，获取最新的公开信息、新闻、政策等。",
-            parameters={
-                "type": "object",
-                "properties": {
-                    "query": {
-                        "type": "string",
-                        "description": "搜索关键词",
-                    },
-                    "max_results": {
-                        "type": "integer",
-                        "description": "最大返回结果数",
-                        "default": 5,
-                    },
-                },
-                "required": ["query"],
-            },
+            name="analyze_job_requirements",
+            description="从已保存岗位的 JD 原文提取技能与要求，不推断企业风险。",
+            parameters=object_schema({"job_id": {"type": "integer"}}, ["job_id"]),
+            func=analyze_job_requirements,
+            category="analyze",
+        ))
+        self.register(Tool(
+            name="inspect_profile_gaps",
+            description="检查当前登录用户画像的证据覆盖和下一步追问，不返回简历原文。",
+            parameters=object_schema({}),
+            func=inspect_profile_gaps,
+            category="profile",
+            inject_user_id=True,
+            expose_via_mcp=False,
+        ))
+        self.register(Tool(
+            name="recommend_jobs_for_profile",
+            description="用当前登录用户的持久化画像对真实岗位库进行可解释评分。",
+            parameters=object_schema({"limit": {"type": "integer", "default": 10}}),
+            func=recommend_jobs_for_profile,
+            category="analyze",
+            inject_user_id=True,
+            expose_via_mcp=False,
+        ))
+        self.register(Tool(
+            name="recommend_learning_resources",
+            description="按主题返回经过人工登记的公开学习资源链接，不生成虚假链接。",
+            parameters=object_schema({
+                "topic": {"type": "string", "default": ""},
+                "limit": {"type": "integer", "default": 4},
+            }),
+            func=recommend_learning_resources,
             category="search",
         ))
-
-        # --- PARSE ---
         self.register(Tool(
-            name="parse_job",
-            description="解析岗位链接或文本，提取公司名称、职位、薪资、要求等结构化信息。",
-            parameters={
-                "type": "object",
-                "properties": {
-                    "input": {
-                        "type": "string",
-                        "description": "岗位链接 URL 或岗位描述文本",
-                    },
-                    "source": {
-                        "type": "string",
-                        "enum": ["url", "text", "auto"],
-                        "description": "输入类型",
-                        "default": "auto",
-                    },
-                },
-                "required": ["input"],
-            },
-            category="parse",
+            name="build_company_verification_plan",
+            description="生成企业官方核验清单；登录、验证码和主体消歧必须由用户人工完成。",
+            parameters=object_schema({"company_name": {"type": "string"}}, ["company_name"]),
+            func=build_company_verification_plan,
+            category="evidence",
         ))
-
         self.register(Tool(
-            name="build_profile",
-            description="从对话中提取或更新用户求职画像，包括技能、经验、期望薪资、意向行业等。",
-            parameters={
-                "type": "object",
-                "properties": {
-                    "conversation_text": {
-                        "type": "string",
-                        "description": "用户与助手的对话内容，用于提取画像信息",
-                    },
-                    "existing_profile": {
-                        "type": "object",
-                        "description": "已有的用户画像（首次为空），新信息会合并进去",
-                    },
-                },
-                "required": ["conversation_text"],
-            },
-            category="parse",
-        ))
-
-        # --- ANALYZE ---
-        self.register(Tool(
-            name="analyze_job_risk",
-            description="对企业或岗位进行风险评估，包括经营风险、劳动纠纷风险、行业风险等多维度分析。",
-            parameters={
-                "type": "object",
-                "properties": {
-                    "company_name": {
-                        "type": "string",
-                        "description": "企业名称",
-                    },
-                    "job_info": {
-                        "type": "object",
-                        "description": "岗位结构化信息（由 parse_job 输出）",
-                    },
-                },
-                "required": ["company_name"],
-            },
-            category="analyze",
-        ))
-
-        self.register(Tool(
-            name="match_jobs",
-            description="将用户画像与岗位库进行匹配，计算匹配度分数并排序推荐。",
-            parameters={
-                "type": "object",
-                "properties": {
-                    "user_profile": {
-                        "type": "object",
-                        "description": "用户求职画像",
-                    },
-                    "job_list": {
-                        "type": "array",
-                        "items": {"type": "object"},
-                        "description": "待匹配的岗位列表",
-                    },
-                    "top_k": {
-                        "type": "integer",
-                        "description": "返回前 K 个最匹配的岗位",
-                        "default": 10,
-                    },
-                },
-                "required": ["user_profile", "job_list"],
-            },
-            category="analyze",
-        ))
-
-        # --- GENERATE ---
-        self.register(Tool(
-            name="generate_resume",
-            description="根据用户画像和目标岗位，生成定制化的求职简历。",
-            parameters={
-                "type": "object",
-                "properties": {
-                    "user_profile": {
-                        "type": "object",
-                        "description": "用户求职画像",
-                    },
-                    "job_info": {
-                        "type": "object",
-                        "description": "目标岗位的结构化信息",
-                    },
-                    "style": {
-                        "type": "string",
-                        "enum": ["standard", "creative", "technical", "management"],
-                        "description": "简历风格",
-                        "default": "standard",
-                    },
-                },
-                "required": ["user_profile", "job_info"],
-            },
+            name="generate_targeted_resume",
+            description="基于已保存画像和目标岗位生成并持久化定向简历，执行前必须人工确认。",
+            parameters=object_schema({
+                "job_id": {"type": "integer"},
+                "template_id": {"type": "string", "default": "template-01"},
+                "max_projects": {"type": "integer", "default": 3},
+            }, ["job_id"]),
+            func=generate_targeted_resume,
             category="generate",
+            execution_mode="write",
+            risk_level="medium",
+            requires_confirmation=True,
+            inject_user_id=True,
+            expose_via_mcp=False,
         ))
 
 
-# 全局单例
 tool_registry = ToolRegistry()

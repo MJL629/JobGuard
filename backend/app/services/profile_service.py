@@ -16,7 +16,9 @@ from sqlalchemy.orm import Session
 
 from app.models.user import (
     User, UserProfile, UserProject, UserSkill, Education, UserPreference,
+    UserExperience,
 )
+from app.models.resume import UserResume
 from app.rag.user_kb import user_kb
 from app.agents.profile_agent import profile_agent
 
@@ -34,6 +36,7 @@ class ProfileService:
         user_id: int,
         resume_text: str,
         file_path: Optional[str] = None,
+        source_resume_id: Optional[int] = None,
     ) -> dict:
         """
         处理用户上传的简历：
@@ -50,13 +53,17 @@ class ProfileService:
             return {"error": "简历解析失败", "parsed": {}}
 
         # 2. 存入 MySQL
-        profile = self._save_parsed_resume(db, user_id, parsed, resume_text, file_path)
+        profile = self._save_parsed_resume(
+            db, user_id, parsed, resume_text, file_path, source_resume_id
+        )
 
         # 3. 向量化存入 Chroma
         await self._sync_to_vector_store(user_id, parsed)
 
         # 4. 计算完整度
         completeness_result = profile_agent.check_completeness(self._profile_to_dict(profile, parsed))
+        profile.profile_completeness = completeness_result["completeness"]
+        db.commit()
 
         return {
             "parsed": parsed,
@@ -87,7 +94,7 @@ class ProfileService:
         # 更新基本信息字段
         basic_fields = [
             "full_name", "gender", "birth_year", "degree", "major",
-            "school", "graduation_year", "current_city",
+            "school", "graduation_year", "current_city", "years_of_experience",
         ]
         for field in basic_fields:
             if field in updates and updates[field] is not None:
@@ -126,9 +133,17 @@ class ProfileService:
 
         db.flush()
 
-        # 更新完整度
+        # 使用完整画像计算持久化分数，避免遗漏偏好、项目和技能。
+        full_profile = self.get_full_profile(db, user_id)
+        completeness_input = {
+            **full_profile.get("basic", {}),
+            **full_profile.get("preferences", {}),
+            "projects": full_profile.get("projects", []),
+            "skills": full_profile.get("skills", []),
+            "experiences": full_profile.get("experiences", []),
+        }
         profile.profile_completeness = profile_agent.check_completeness(
-            self._profile_to_dict(profile, {})
+            completeness_input
         )["completeness"]
 
         db.commit()
@@ -147,6 +162,18 @@ class ProfileService:
         skills = db.query(UserSkill).filter(UserSkill.user_id == user_id).all()
         education = db.query(Education).filter(Education.user_id == user_id).all()
         pref = db.query(UserPreference).filter(UserPreference.user_id == user_id).first()
+        experiences = (
+            db.query(UserExperience)
+            .filter(UserExperience.user_id == user_id)
+            .order_by(UserExperience.sort_order.desc(), UserExperience.created_at.desc())
+            .all()
+        )
+        resumes = (
+            db.query(UserResume)
+            .filter(UserResume.user_id == user_id)
+            .order_by(UserResume.is_primary.desc(), UserResume.created_at.desc())
+            .all()
+        )
 
         result = {
             "user_id": user_id,
@@ -155,6 +182,8 @@ class ProfileService:
             "projects": [],
             "skills": [],
             "preferences": {},
+            "experiences": [],
+            "resumes": [],
             "completeness": 0,
         }
 
@@ -173,6 +202,7 @@ class ProfileService:
                 "years_of_experience": profile.years_of_experience,
             }
             result["completeness"] = profile.profile_completeness
+            result["interview_memory"] = profile.interview_memory or {}
 
         for edu in education:
             result["education"].append({
@@ -220,7 +250,48 @@ class ProfileService:
                 "company_scale_pref": pref.company_scale_pref,
             }
 
+        for item in experiences:
+            result["experiences"].append({
+                "id": item.id,
+                "experience_type": item.experience_type,
+                "title": item.title,
+                "organization": item.organization,
+                "role": item.role,
+                "description": item.description,
+                "actions": item.actions,
+                "achievements": item.achievements,
+                "tech_stack": item.tech_stack or [],
+                "start_date": item.start_date,
+                "end_date": item.end_date,
+                "verification_status": item.verification_status,
+                "source_resume_id": item.source_resume_id,
+            })
+
+        for item in resumes:
+            result["resumes"].append(self._resume_to_dict(item))
+
         return result
+
+    def save_interview_memory(self, db: Session, user_id: int, memory: dict) -> dict:
+        """Persist deep-interview progress so a new chat does not restart from zero."""
+        profile = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
+        if not profile:
+            profile = UserProfile(user_id=user_id, profile_completeness=0)
+            db.add(profile)
+        profile.interview_memory = dict(memory or {})
+        db.commit()
+        return profile.interview_memory or {}
+
+    @staticmethod
+    def build_resume_follow_up_questions(profile: dict, parsed: dict | None = None) -> list[str]:
+        flattened = {
+            **(profile.get("basic") or {}),
+            **(profile.get("preferences") or {}),
+            "projects": profile.get("projects") or [],
+            "experiences": profile.get("experiences") or [],
+            "skills": profile.get("skills") or [],
+        }
+        return profile_agent.resume_follow_up_questions(flattened, parsed)
 
     # ─── 项目经历管理 ────────────────────────────────────────────────
 
@@ -242,6 +313,107 @@ class ProfileService:
         db.refresh(project)
         return {"id": project.id, "project_name": project.project_name}
 
+    def add_experience(self, db: Session, user_id: int, data: dict) -> dict:
+        """保存用户在对话中确认的项目、比赛、实习、科研或其他经历。"""
+        title = str(data.get("title") or "").strip()
+        if not title:
+            raise ValueError("经历名称不能为空")
+        experience_type = data.get("experience_type") or "project"
+        existing = (
+            db.query(UserExperience)
+            .filter(
+                UserExperience.user_id == user_id,
+                UserExperience.experience_type == experience_type,
+                UserExperience.title == title,
+            )
+            .first()
+        )
+        if existing:
+            merged_tech = list(dict.fromkeys([
+                *(existing.tech_stack or []),
+                *(data.get("tech_stack") or []),
+            ]))
+            existing.tech_stack = merged_tech
+            for field in ("organization", "role", "description", "actions", "achievements"):
+                if data.get(field) and not getattr(existing, field):
+                    setattr(existing, field, data[field])
+            self._upsert_experience_skills(db, user_id, merged_tech)
+            db.commit()
+            return {
+                "id": existing.id,
+                "title": existing.title,
+                "experience_type": existing.experience_type,
+                "deduplicated": True,
+            }
+        item = UserExperience(
+            user_id=user_id,
+            source_resume_id=data.get("source_resume_id"),
+            experience_type=experience_type,
+            title=title,
+            organization=data.get("organization"),
+            role=data.get("role"),
+            description=data.get("description"),
+            actions=data.get("actions"),
+            achievements=data.get("achievements"),
+            tech_stack=data.get("tech_stack") or [],
+            start_date=data.get("start_date"),
+            end_date=data.get("end_date"),
+            evidence_text=data.get("evidence_text"),
+            verification_status=data.get("verification_status") or "user_confirmed",
+        )
+        db.add(item)
+        self._upsert_experience_skills(db, user_id, data.get("tech_stack") or [])
+        db.commit()
+        db.refresh(item)
+        return {"id": item.id, "title": item.title, "experience_type": item.experience_type}
+
+    @staticmethod
+    def _upsert_experience_skills(db: Session, user_id: int, tech_stack: list) -> None:
+        """Promote explicitly used experience technologies into profile skills."""
+        existing_skill_names = {
+            skill.skill_name.strip().lower()
+            for skill in db.query(UserSkill).filter(UserSkill.user_id == user_id).all()
+        }
+        for skill_name in tech_stack or []:
+            normalized = str(skill_name).strip()
+            if normalized and normalized.lower() not in existing_skill_names:
+                db.add(UserSkill(
+                    user_id=user_id,
+                    skill_name=normalized[:100],
+                    proficiency="实际使用",
+                    category="项目工具",
+                ))
+                existing_skill_names.add(normalized.lower())
+
+    def list_resumes(self, db: Session, user_id: int) -> list[dict]:
+        items = (
+            db.query(UserResume)
+            .filter(UserResume.user_id == user_id)
+            .order_by(UserResume.is_primary.desc(), UserResume.created_at.desc())
+            .all()
+        )
+        return [self._resume_to_dict(item) for item in items]
+
+    def set_primary_resume(self, db: Session, user_id: int, resume_id: int) -> dict | None:
+        target = (
+            db.query(UserResume)
+            .filter(UserResume.id == resume_id, UserResume.user_id == user_id)
+            .first()
+        )
+        if target is None:
+            return None
+        db.query(UserResume).filter(UserResume.user_id == user_id).update(
+            {UserResume.is_primary: False}, synchronize_session=False
+        )
+        target.is_primary = True
+        profile = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
+        if profile:
+            profile.resume_file_path = target.stored_path
+            profile.resume_raw_text = target.extracted_text
+        db.commit()
+        db.refresh(target)
+        return self._resume_to_dict(target)
+
     # ─── 私有方法 ─────────────────────────────────────────────────────
 
     def _save_parsed_resume(
@@ -251,6 +423,7 @@ class ProfileService:
         parsed: dict,
         resume_text: str,
         file_path: Optional[str] = None,
+        source_resume_id: Optional[int] = None,
     ) -> UserProfile:
         """将解析结果存入 MySQL"""
         # 用户画像
@@ -293,10 +466,24 @@ class ProfileService:
 
         # 项目经历（追加，不覆盖已有）
         projects = parsed.get("projects", [])
+        existing_project_names = {
+            (item.project_name or "").strip().lower()
+            for item in db.query(UserProject).filter(UserProject.user_id == user_id).all()
+        }
+        existing_experience_keys = {
+            ((item.experience_type or "project"), (item.title or "").strip().lower())
+            for item in db.query(UserExperience).filter(UserExperience.user_id == user_id).all()
+        }
         for proj in projects:
+            project_name = str(proj.get("project_name") or "").strip()
+            if not project_name:
+                continue
+            normalized_name = project_name.lower()
+            if normalized_name in existing_project_names:
+                continue
             db.add(UserProject(
                 user_id=user_id,
-                project_name=proj.get("project_name", ""),
+                project_name=project_name,
                 role=proj.get("role"),
                 description=proj.get("description"),
                 tech_stack=proj.get("tech_stack"),
@@ -305,6 +492,24 @@ class ProfileService:
                 highlights=proj.get("highlights"),
                 project_url=proj.get("project_url"),
             ))
+            existing_project_names.add(normalized_name)
+            experience_key = ("project", normalized_name)
+            if experience_key not in existing_experience_keys:
+                db.add(UserExperience(
+                    user_id=user_id,
+                    source_resume_id=source_resume_id,
+                    experience_type="project",
+                    title=project_name,
+                    role=proj.get("role"),
+                    description=proj.get("description"),
+                    achievements=proj.get("highlights"),
+                    tech_stack=proj.get("tech_stack") or [],
+                    start_date=proj.get("start_date"),
+                    end_date=proj.get("end_date"),
+                    evidence_text=(proj.get("description") or proj.get("highlights") or "")[:1000],
+                    verification_status="resume_extracted",
+                ))
+                existing_experience_keys.add(experience_key)
 
         # 技能（追加，不覆盖）
         skills = parsed.get("skills", [])
@@ -417,6 +622,22 @@ class ProfileService:
         if parsed:
             result.update({k: v for k, v in parsed.items() if v and k not in result})
         return result
+
+    @staticmethod
+    def _resume_to_dict(item: UserResume) -> dict:
+        return {
+            "id": item.id,
+            "original_name": item.original_name,
+            "sha256": item.sha256,
+            "media_type": item.media_type,
+            "parser": item.parser,
+            "ocr_used": bool(item.ocr_used),
+            "extracted_chars": item.extracted_chars or 0,
+            "parse_status": item.parse_status,
+            "parse_error": item.parse_error,
+            "is_primary": bool(item.is_primary),
+            "created_at": item.created_at.isoformat() if item.created_at else None,
+        }
 
 
 # 全局单例

@@ -36,6 +36,12 @@ const routes = [
     meta: { title: '我的画像' },
   },
   {
+    path: '/agent-ops',
+    name: 'AgentOps',
+    component: () => import('../views/AgentOpsView.vue'),
+    meta: { title: 'Agent 运行与评估' },
+  },
+  {
     path: '/login',
     name: 'Login',
     component: () => import('../views/LoginView.vue'),
@@ -46,6 +52,17 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes,
+})
+
+router.beforeEach((to) => {
+  const hasToken = Boolean(localStorage.getItem('token'))
+  if (to.name !== 'Login' && !hasToken) {
+    return { name: 'Login', query: { redirect: to.fullPath } }
+  }
+  if (to.name === 'Login' && hasToken) {
+    return { name: 'Chat' }
+  }
+  return true
 })
 
 export default router

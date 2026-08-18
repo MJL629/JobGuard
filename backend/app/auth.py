@@ -116,17 +116,15 @@ async def get_current_user_id(
     """
     FastAPI 依赖：从请求中提取当前用户 ID。
 
-    开发阶段：如果无 token，返回默认用户 ID=1。
-    生产环境：移除默认值，强制要求认证。
+    所有业务接口必须从 access token 获取当前用户，禁止使用默认用户。
     """
     if credentials:
         user_id = get_user_id_from_token(credentials.credentials)
         if user_id:
             return user_id
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
+        raise HTTPException(status_code=401, detail="登录已过期，请重新登录")
 
-    # 开发阶段：返回默认用户
-    return 1
+    raise HTTPException(status_code=401, detail="请先登录")
 
 
 async def require_auth(
@@ -137,10 +135,10 @@ async def require_auth(
     FastAPI 依赖：强制要求认证（生产环境用）。
     """
     if not credentials:
-        raise HTTPException(status_code=401, detail="Authentication required")
+        raise HTTPException(status_code=401, detail="请先登录")
 
     user_id = get_user_id_from_token(credentials.credentials)
     if not user_id:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
+        raise HTTPException(status_code=401, detail="登录已过期，请重新登录")
 
     return user_id

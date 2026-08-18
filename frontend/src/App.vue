@@ -32,8 +32,16 @@
           <el-icon><User /></el-icon>
           <span>我的画像</span>
         </el-menu-item>
+        <el-menu-item index="/agent-ops">
+          <el-icon><DataAnalysis /></el-icon>
+          <span>Agent 运行</span>
+        </el-menu-item>
       </el-menu>
       <div class="sidebar-footer">
+        <div v-if="userStore.user" class="current-user">
+          <span>{{ userStore.user.username }}</span>
+          <el-button link type="primary" @click="handleLogout">退出</el-button>
+        </div>
         <span class="version">v0.1.0</span>
       </div>
     </aside>
@@ -46,13 +54,27 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useUserStore } from './stores/user'
 
 const route = useRoute()
+const router = useRouter()
+const userStore = useUserStore()
 
 const isLoginPage = computed(() => route.name === 'Login')
 const activeMenu = computed(() => route.path)
+
+onMounted(() => {
+  if (userStore.isLoggedIn) {
+    userStore.restoreSession().catch(() => {})
+  }
+})
+
+const handleLogout = () => {
+  userStore.logout()
+  router.replace('/login')
+}
 </script>
 
 <style scoped>
@@ -107,6 +129,15 @@ const activeMenu = computed(() => route.path)
 .sidebar-footer {
   padding: 16px 20px;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.current-user {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .version {

@@ -4,24 +4,28 @@ FastAPI 应用入口
 """
 
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response
+from fastapi.responses import JSONResponse, Response
+from sqlalchemy import text
+from starlette.concurrency import run_in_threadpool
 
+from app.auth import require_auth
 from app.config import settings
 from app.api import api_router
 from app.middleware import MonitoringMiddleware
+from app.models.base import engine
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """应用生命周期管理"""
     # 启动时
-    print(f"🚀 {settings.app_name} v{settings.app_version} 启动中...")
+    print(f"[Startup] {settings.app_name} v{settings.app_version} 启动中...")
     print(f"   LLM Gateway: {'Mock 模式 (未配置 API Key)' if _is_mock_mode() else '已就绪'}")
     yield
     # 关闭时
-    print(f"👋 {settings.app_name} 已关闭")
+    print(f"[Shutdown] {settings.app_name} 已关闭")
 
 
 def _is_mock_mode() -> bool:
@@ -64,18 +68,34 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy"}
+    database_ready = await run_in_threadpool(_database_ready)
+    payload = {
+        "status": "healthy" if database_ready else "unavailable",
+        "checks": {"database": "up" if database_ready else "down"},
+    }
+    if not database_ready:
+        return JSONResponse(status_code=503, content=payload)
+    return payload
+
+
+def _database_ready() -> bool:
+    try:
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
+        return True
+    except Exception:
+        return False
 
 
 @app.get("/metrics")
-async def metrics_endpoint():
+async def metrics_endpoint(_current_user_id: int = Depends(require_auth)):
     """Prometheus 格式的监控指标"""
     from app.monitoring import metrics
     return Response(content=metrics.get_prometheus_format(), media_type="text/plain")
 
 
 @app.get("/admin/stats")
-async def admin_stats():
+async def admin_stats(_current_user_id: int = Depends(require_auth)):
     """人类可读的统计信息（JSON 格式）"""
     from app.monitoring import metrics
     return metrics.get_summary()

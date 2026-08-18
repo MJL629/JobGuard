@@ -3,6 +3,7 @@ JobGuard 全局配置管理
 基于 pydantic-settings，自动从 .env 文件加载
 """
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
 from typing import Optional
 
@@ -16,6 +17,18 @@ class Settings(BaseSettings):
     debug: bool = True
     secret_key: str = "change-me-to-a-random-secret-key"
 
+    @field_validator("debug", mode="before")
+    @classmethod
+    def normalize_debug_mode(cls, value):
+        """Accept common tool-provided mode names without breaking startup."""
+        if isinstance(value, str):
+            normalized = value.strip().lower()
+            if normalized in {"release", "production", "prod"}:
+                return False
+            if normalized in {"debug", "development", "dev"}:
+                return True
+        return value
+
     # --- CORS ---
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 
@@ -27,6 +40,11 @@ class Settings(BaseSettings):
     zhipu_api_key: str = ""
     deepseek_api_key: str = ""
     siliconflow_api_key: str = ""
+
+    # --- 可选外部可观测性（默认关闭，避免求职隐私离开本机）---
+    langsmith_tracing: bool = False
+    langsmith_api_key: str = ""
+    langsmith_project: str = "jobguard-local-evaluation"
 
     # --- 数据库 ---
     mysql_host: str = "localhost"

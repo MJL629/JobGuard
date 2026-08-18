@@ -13,10 +13,14 @@ class JobGuardState(TypedDict, total=False):
     messages: Annotated[list, add_messages]
     user_id: str
     session_id: str
+    session_type: str
 
     # 意图路由
-    intent: str  # build_profile | analyze_job | generate_resume | recommend_jobs
+    intent: str  # build_profile | analyze_job | generate_resume | recommend_jobs | career_advice
     current_stage: str
+    graph_trace: list[str]
+    execution_plan: list[dict]
+    evidence_policy: dict
 
     # 用户画像
     user_profile: Optional[dict]

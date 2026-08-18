@@ -211,7 +211,7 @@ class TimeoutManager:
         "sse_total": 300.0,         # SSE 流总超时（5分钟）
         "profile_building": 120.0,  # 画像构建
         "job_analysis": 180.0,      # 岗位分析（含背调）
-        "resume_generation": 120.0, # 简历生成
+        "resume_generation": 240.0, # 简历生成（包含事实核验与双格式导出）
         "job_matching": 120.0,      # 岗位匹配
     }
 

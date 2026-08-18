@@ -33,3 +33,7 @@ uploads/
 
 # Chroma runtime data
 backend/data/chroma/
+
+# 杩愯鏃剁敓鎴愮墿
+backend/output/
+tmp/

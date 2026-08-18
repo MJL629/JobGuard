@@ -10,9 +10,14 @@
 
 import json
 import logging
+import re
 from typing import Optional
+from urllib.parse import urlparse
+
+from bs4 import BeautifulSoup
 
 from app.llm.gateway import llm_gateway
+from app.services.job_fetch_service import JobFetchError, job_fetch_service
 
 logger = logging.getLogger(__name__)
 
@@ -104,8 +109,37 @@ class JobParserAgent:
         """
         logger.info(f"[JobParser] 开始解析岗位，输入类型={input_type}，长度={len(raw_input)}")
 
+        stripped_input = raw_input.strip()
+        source_url = None
+        source_evidence = None
+        structured_job = {}
+        if stripped_input.startswith(("http://", "https://")) and "\n" not in stripped_input:
+            try:
+                page = await job_fetch_service.fetch(stripped_input)
+            except JobFetchError as exc:
+                return {"error": exc.message, "error_code": exc.code}
+            source_url = page.final_url
+            source_evidence = page.evidence()
+            structured_job = self._structured_to_job_info(page.structured_job)
+            raw_input = (
+                f"来源链接：{page.final_url}\n"
+                f"网页标题：{page.title}\n"
+                f"岗位网页正文：\n{page.text}"
+            )
+            input_type = "url"
+
         # 1. 提取结构化信息
         job_info = await self._extract_job_info(raw_input)
+        fallback = self._extract_job_info_fallback(raw_input)
+        job_info = job_info if isinstance(job_info, dict) else {}
+        for key, value in {**fallback, **structured_job}.items():
+            if value not in (None, "", []) and not job_info.get(key):
+                job_info[key] = value
+
+        if source_url:
+            job_info["source_url"] = source_url
+            job_info["source_type"] = self._source_type_from_url(source_url)
+            job_info["source_evidence"] = source_evidence
 
         if not job_info or not job_info.get("company_name"):
             logger.warning("[JobParser] 未能提取到有效岗位信息")
@@ -125,6 +159,95 @@ class JobParserAgent:
 
         logger.info(f"[JobParser] 解析完成：{job_info.get('company_name')} - {job_info.get('job_title')}")
         return job_info
+
+    @staticmethod
+    def _structured_to_job_info(posting: dict) -> dict:
+        if not posting:
+            return {}
+        organization = posting.get("hiringOrganization") or {}
+        location = posting.get("jobLocation") or {}
+        if isinstance(location, list):
+            location = location[0] if location else {}
+        address = location.get("address") if isinstance(location, dict) else {}
+        if isinstance(address, str):
+            location_text = address
+        else:
+            address = address or {}
+            location_text = "".join(
+                str(address.get(key) or "")
+                for key in ("addressRegion", "addressLocality", "streetAddress")
+            )
+        base_salary = posting.get("baseSalary") or {}
+        value = base_salary.get("value") if isinstance(base_salary, dict) else {}
+        if isinstance(value, (int, float)):
+            salary_min = salary_max = int(value)
+        else:
+            value = value or {}
+            salary_min = value.get("minValue") or value.get("value")
+            salary_max = value.get("maxValue") or value.get("value")
+        description = BeautifulSoup(str(posting.get("description") or ""), "html.parser").get_text("\n", strip=True)
+        qualifications = posting.get("qualifications") or posting.get("skills") or []
+        if isinstance(qualifications, str):
+            qualifications = [item.strip() for item in re.split(r"[\n；;]", qualifications) if item.strip()]
+        return {
+            "company_name": organization.get("name") if isinstance(organization, dict) else None,
+            "job_title": posting.get("title"),
+            "salary_min": salary_min,
+            "salary_max": salary_max,
+            "location": location_text or posting.get("jobLocationType"),
+            "experience_required": posting.get("experienceRequirements"),
+            "education_required": posting.get("educationRequirements"),
+            "employment_type": posting.get("employmentType"),
+            "job_description": description,
+            "jd_raw_text": description,
+            "requirements": qualifications,
+            "source_url": posting.get("url"),
+        }
+
+    @staticmethod
+    def _extract_job_info_fallback(raw_text: str) -> dict:
+        """仅提取带标签的明确字段，供模型不可用时兜底。"""
+        def capture(pattern: str):
+            match = re.search(pattern, raw_text, re.IGNORECASE)
+            return match.group(1).strip() if match else None
+
+        company = capture(r"(?:公司(?:名称)?|企业)\s*[:：]\s*([^\n；;]{2,80})")
+        title = capture(r"(?:岗位(?:名称)?|职位(?:名称)?|招聘职位)\s*[:：]\s*([^\n；;]{2,80})")
+        location = capture(r"(?:工作地点|地点|城市)\s*[:：]\s*([^\n；;]{2,80})")
+        salary_match = re.search(
+            r"(?:薪资|月薪)\s*[:：]?\s*(\d+(?:\.\d+)?)\s*([kK千万]?)\s*[-~至]\s*(\d+(?:\.\d+)?)\s*([kK千万]?)",
+            raw_text,
+        )
+        salary_min = salary_max = None
+        if salary_match:
+            values = [float(salary_match.group(1)), float(salary_match.group(3))]
+            units = [salary_match.group(2), salary_match.group(4)]
+            for index, unit in enumerate(units):
+                if unit.lower() == "k" or unit == "千":
+                    values[index] *= 1000
+                elif unit == "万":
+                    values[index] *= 10000
+            salary_min, salary_max = map(int, values)
+        return {
+            key: value for key, value in {
+                "company_name": company,
+                "job_title": title,
+                "location": location,
+                "salary_min": salary_min,
+                "salary_max": salary_max,
+            }.items() if value not in (None, "")
+        }
+
+    @staticmethod
+    def _source_type_from_url(url: str) -> str:
+        hostname = (urlparse(url).hostname or "").lower()
+        mappings = {
+            "zhipin.com": "boss_zhipin",
+            "lagou.com": "lagou",
+            "51job.com": "51job",
+            "liepin.com": "liepin",
+        }
+        return next((source for domain, source in mappings.items() if hostname.endswith(domain)), "public_web")
 
     # ─── 提取岗位信息 ─────────────────────────────────────────────────
 

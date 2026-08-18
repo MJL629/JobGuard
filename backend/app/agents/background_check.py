@@ -12,10 +12,14 @@
 
 import json
 import logging
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 from app.llm.gateway import llm_gateway
 from app.rag.company_kb import company_kb
+from app.agents.tools.company_evidence import search_company_info
+
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 
@@ -24,30 +28,10 @@ logger = logging.getLogger(__name__)
 
 async def _real_web_search(query: str, max_results: int = 5) -> str:
     """
-    执行真实的网络搜索，返回结构化的搜索结果摘要。
-    利用 LLM 的知识库获取实时企业信息。
+    企业联网数据源尚未接入。禁止用 LLM 记忆冒充实时搜索结果。
     """
-    try:
-        search_prompt = (
-            "请针对以下查询提供你所了解的相关真实信息：\n\n"
-            f"查询：{query}\n\n"
-            "要求：\n"
-            "1. 返回你了解的相关真实信息\n"
-            "2. 如果信息不确定，标注[不确定]\n"
-            "3. 如果完全不知道，返回[无相关信息]\n"
-            "4. 尽量提供具体数据（如人数、日期、金额等）\n"
-            "5. 用中文回复，简洁清晰"
-        )
-
-        messages = [
-            {"role": "system", "content": "你是一个企业信息搜索助手。请基于你的知识库提供真实的企业信息。如果信息不确定请标注。"},
-            {"role": "user", "content": search_prompt},
-        ]
-        result = await llm_gateway.chat(messages, provider="zhipu", temperature=0.1)
-        return result if result else "[搜索无结果]"
-    except Exception as e:
-        logger.warning(f"[WebSearch] 搜索失败 '{query}': {e}")
-        return f"[搜索失败: {str(e)[:100]}]"
+    logger.info(f"[WebSearch] 已阻止无来源查询: {query}")
+    return "[未接入可核验联网数据源]"
 
 
 async def _batch_web_search(queries: list[str]) -> list[str]:
@@ -243,6 +227,7 @@ class BackgroundCheckAgent:
         self,
         job_info: dict,
         user_profile: Optional[dict] = None,
+        db: Optional["Session"] = None,
     ) -> dict:
         """
         对企业/岗位进行全面背调（使用真实 WebSearch）
@@ -265,31 +250,60 @@ class BackgroundCheckAgent:
         jd_analysis = await self._analyze_jd(job_info)
         logger.info(f"[BackgroundCheck] JD分析完成，加班风险={jd_analysis.get('overtime_risk')}")
 
-        # 3. 实时检索企业公开信息 + 网络口碑（并行）
-        import asyncio
-        company_info, online_reputation = await asyncio.gather(
-            self._search_company_info(company_name),
-            self._search_reputation(company_name),
-            return_exceptions=True,
-        )
-        if isinstance(company_info, Exception):
-            logger.warning(f"[BackgroundCheck] 企业信息检索失败: {company_info}")
-            company_info = "企业信息检索失败"
-        if isinstance(online_reputation, Exception):
-            logger.warning(f"[BackgroundCheck] 口碑检索失败: {online_reputation}")
-            online_reputation = "口碑检索失败"
+        # 3. 从 MySQL 读取已经绑定来源的企业证据。联网失败不会触发模型补全。
+        if db is not None:
+            try:
+                evidence_summary = await search_company_info(
+                    company_name=company_name,
+                    query_type="all",
+                    db=db,
+                )
+            except Exception as exc:
+                logger.warning("[BackgroundCheck] search_company_info 工具失败: %s", exc)
+                evidence_summary = {
+                    "tool_name": "search_company_info",
+                    "status": "failed",
+                    "verification_status": "unverified",
+                    "sources": [],
+                    "dimensions": {},
+                    "evidence": [],
+                    "error": "企业证据查询暂不可用",
+                }
+        else:
+            evidence_summary = {
+                "tool_name": "search_company_info",
+                "status": "skipped_no_database",
+                "verification_status": "unverified",
+                "sources": [],
+                "dimensions": {},
+                "evidence": [],
+            }
 
-        # 4. 综合风险评估（DeepSeek V3 推理）
-        assessment = await self._assess_risk(
-            job_info, jd_analysis, company_info, online_reputation, user_profile
+        # 4. 先生成只依赖 JD 的确定性评估，再逐项覆盖确有来源的企业维度。
+        assessment = self._build_evidence_limited_assessment(
+            jd_analysis,
+            user_profile,
+            job_info,
         )
+        assessment = self._apply_stored_evidence(assessment, evidence_summary)
+        assessment = self._apply_live_queries(assessment, evidence_summary)
+        assessment["tool_trace"] = [{
+            "tool_name": evidence_summary.get("tool_name", "search_company_info"),
+            "status": evidence_summary.get("status", "unknown"),
+            "verification_status": evidence_summary.get("verification_status", "unverified"),
+            "verified_dimensions": evidence_summary.get("verified_dimensions", []),
+            "missing_dimensions": evidence_summary.get("missing_dimensions", []),
+            "source_count": len(evidence_summary.get("sources", [])),
+            "live_queries": evidence_summary.get("live_queries", []),
+        }]
         logger.info(f"[BackgroundCheck] 风险评估完成，等级={assessment.get('risk_level')}")
 
         # 5. 合并知识库数据（实时结果优先）
-        assessment = self._merge_with_kb(assessment, kb_results)
+        if assessment.get("verification_status") != "jd_only":
+            assessment = self._merge_with_kb(assessment, kb_results)
 
-        # 6. 生成用户友好的报告
-        report = await self._generate_report(assessment)
+        # 6. 使用确定性报告，避免生成阶段重新引入无来源事实。
+        report = self._generate_fallback_report(assessment)
 
         # 7. 存入知识库
         await self._save_to_kb(company_name, job_title, assessment, report)
@@ -307,46 +321,474 @@ class BackgroundCheckAgent:
             "positive_points": assessment.get("positive_points", []),
             "advice": assessment.get("advice", ""),
             "report": report,
+            "verification_status": assessment.get("verification_status", "jd_only"),
+            "sources": assessment.get("sources", []),
+            "verification_tasks": assessment.get("verification_tasks", []),
+            "tool_trace": assessment.get("tool_trace", []),
         }
+
+    @staticmethod
+    def _apply_stored_evidence(assessment: dict, evidence_summary: dict) -> dict:
+        """Apply only source-backed facts; an official job never proves company risk facts."""
+        evidence_rows = evidence_summary.get("evidence") or []
+        if not evidence_rows:
+            return assessment
+
+        company_fact_types = {
+            "registry",
+            "operating_abnormality",
+            "administrative_penalty",
+            "social_insurance",
+            "labor_dispute",
+        }
+        verified_fact_rows = [
+            item
+            for item in evidence_rows
+            if item.get("is_verified") and item.get("evidence_type") in company_fact_types
+        ]
+        official_job_rows = [
+            item
+            for item in evidence_rows
+            if item.get("is_verified") and item.get("evidence_type") == "official_job"
+        ]
+        dimensions = assessment.setdefault("dimensions", {})
+        stored_dimensions = evidence_summary.get("dimensions") or {}
+
+        social = stored_dimensions.get("social_insurance") or {}
+        if social.get("verified"):
+            facts = social.get("facts") or {}
+            participants = facts.get("participants")
+            year = facts.get("reporting_year")
+            dimensions["social_insurance"] = {
+                "participants": participants,
+                "reporting_year": year,
+                "trend": "来源未提供连续年度数据，不能判断趋势",
+                "assessment": (
+                    f"官方来源记录{year or '对应年度'}参保人数为{participants}人。"
+                    if participants is not None
+                    else "已保存社保官方来源，但该来源未提供可用参保人数字段。"
+                ),
+                "score": None,
+                "verified": True,
+                "evidence_ids": social.get("evidence_ids", []),
+            }
+
+        disputes = stored_dimensions.get("labor_disputes") or {}
+        if disputes.get("verified"):
+            facts = disputes.get("facts") or {}
+            case_count = facts.get("case_count")
+            dimensions["labor_disputes"] = {
+                "total_cases": case_count,
+                "recent_12m": None,
+                "main_types": [facts["cause"]] if facts.get("cause") else [],
+                "assessment": (
+                    f"保存的官方来源在其查询范围内记录{case_count}起相关案件；结果数不等同于企业全部历史案件。"
+                    if case_count is not None
+                    else "已保存公开裁判来源，但未提供可去重的案件数量。"
+                ),
+                "score": None,
+                "verified": True,
+                "evidence_ids": disputes.get("evidence_ids", []),
+            }
+
+        registry = stored_dimensions.get("registry") or {}
+        business = stored_dimensions.get("business_risk") or {}
+        if registry.get("verified") or business.get("verified"):
+            facts = {**(registry.get("facts") or {}), **(business.get("facts") or {})}
+            status = facts.get("registration_status")
+            abnormal = facts.get("abnormal_count")
+            penalties = facts.get("penalty_count")
+            statements = []
+            if status is not None:
+                statements.append(f"登记状态：{status}")
+            if abnormal is not None:
+                statements.append(f"来源记录经营异常{abnormal}项")
+            if penalties is not None:
+                statements.append(f"来源记录行政处罚{penalties}项")
+            dimensions["business_risk"] = {
+                "registration_status": status,
+                "abnormal_operations": abnormal,
+                "administrative_penalties": penalties,
+                "assessment": "；".join(statements) if statements else "已保存工商官方来源，但未提取风险数量字段。",
+                "score": None,
+                "verified": True,
+                "evidence_ids": list(dict.fromkeys([
+                    *(registry.get("evidence_ids") or []),
+                    *(business.get("evidence_ids") or []),
+                ])),
+            }
+
+        reputation = stored_dimensions.get("online_reputation") or {}
+        if reputation.get("evidence_count"):
+            dimensions["online_reputation"] = {
+                "overall_sentiment": "有来源但未作统计推断",
+                "common_complaints": [],
+                "highlights": [],
+                "assessment": "已保存口碑来源，仅作为线索展示；不能据零散样本推断整体员工口碑。",
+                "score": None,
+                "verified": False,
+                "evidence_ids": reputation.get("evidence_ids", []),
+            }
+
+        if official_job_rows:
+            dimensions["official_jobs"] = {
+                "verified": True,
+                "evidence_count": len(official_job_rows),
+                "assessment": f"北京市公共数据开放平台保存了该企业{len(official_job_rows)}条招聘岗位记录；这只证明招聘来源，不证明企业无风险。",
+                "score": None,
+                "evidence_ids": [item.get("id") for item in official_job_rows],
+            }
+            assessment.setdefault("positive_points", []).append(
+                "岗位可追溯到北京市公共数据开放平台的单位招聘数据"
+            )
+
+        existing_sources = assessment.get("sources") or []
+        evidence_sources = evidence_summary.get("sources") or []
+        assessment["sources"] = list({
+            (item.get("url"), item.get("supports")): item
+            for item in [*existing_sources, *evidence_sources]
+            if item.get("url")
+        }.values())
+        if verified_fact_rows:
+            assessment["verification_status"] = "official_company_evidence"
+            assessment["summary"] = (
+                f"已读取{len(verified_fact_rows)}条企业官方证据，并逐项标注来源。"
+                + assessment.get("summary", "")
+            )
+        elif official_job_rows:
+            assessment["verification_status"] = "official_job_evidence"
+            assessment["summary"] = (
+                "岗位来源已由北京市官方开放数据核验；社保、劳动争议、工商风险和口碑仍未核验。 "
+                + assessment.get("summary", "")
+            )
+        return assessment
+
+    @staticmethod
+    def _apply_live_queries(assessment: dict, evidence_summary: dict) -> dict:
+        """Expose live-query outcomes without converting absence into a clean bill."""
+        live_queries = evidence_summary.get("live_queries") or []
+        if not live_queries:
+            return assessment
+
+        dimensions = assessment.setdefault("dimensions", {})
+        by_adapter = {item.get("adapter"): item for item in live_queries}
+        transactions = by_adapter.get("national_public_resource_transactions") or {}
+        transaction_status = transactions.get("status")
+        transaction_count = transactions.get("result_count", 0)
+        if transaction_status == "success_with_results":
+            assessment_text = (
+                f"已实时查询全国公共资源交易平台，命中企业全称，返回"
+                f"{transaction_count}条主体记录；成交项目数仅按平台当前返回值展示。"
+            )
+        elif transaction_status == "success_no_results":
+            assessment_text = (
+                "已实时查询全国公共资源交易平台，当前未命中该企业全称。"
+                "无结果不代表企业不存在，也不代表企业没有其他经营活动。"
+            )
+        else:
+            assessment_text = "全国公共资源交易平台本次暂时不可访问，未把失败查询解释为无记录。"
+        dimensions["public_transactions"] = {
+            "verified": transaction_status == "success_with_results",
+            "status": transaction_status or "not_queried",
+            "record_count": transaction_count,
+            "assessment": assessment_text,
+            "score": None,
+        }
+
+        mentions = by_adapter.get("bing_public_web_search") or {}
+        mentions_status = mentions.get("status")
+        mentions_count = mentions.get("result_count", 0)
+        reputation = dimensions.setdefault("online_reputation", {})
+        if mentions_status == "success_with_results":
+            reputation.update({
+                "status": "live_results",
+                "assessment": (
+                    f"已实时检索公开网页，保留{mentions_count}条包含企业全称的来源链接。"
+                    "这些结果仅是核验线索，不能代表整体员工口碑。"
+                ),
+                "verified": False,
+            })
+        elif mentions_status == "success_no_results":
+            reputation.update({
+                "status": "queried_no_results",
+                "assessment": (
+                    "已实时检索公开网页，当前未找到包含企业全称的结果。"
+                    "无结果不等于口碑良好或企业无风险。"
+                ),
+                "verified": False,
+            })
+        else:
+            reputation.update({
+                "status": "temporarily_unavailable",
+                "assessment": "公开网页检索本次暂时不可用，未生成任何口碑结论。",
+                "verified": False,
+            })
+
+        successful_queries = [
+            item for item in live_queries
+            if item.get("status") in {"success_with_results", "success_no_results"}
+        ]
+        if successful_queries:
+            if assessment.get("verification_status") in {"jd_only", "jd_source_fetched"}:
+                assessment["verification_status"] = "live_sources_queried"
+            previous_summary = assessment.get("summary", "")
+            previous_summary = previous_summary.replace(
+                "岗位来源已由北京市官方开放数据核验；社保、劳动争议、工商风险和口碑仍未核验。 ",
+                "岗位来源已由北京市官方开放数据核验。 ",
+            ).replace(
+                "企业社保、劳动争议、工商风险和网络口碑均未联网核验，不提供具体数字。",
+                "社保人数无公开统一接口，工商与裁判文书受访问控制；公开网页和公共交易来源已实时查询。",
+            )
+            assessment["summary"] = (
+                f"已执行{len(successful_queries)}个实时外部来源查询；无结果不等于无风险。 "
+                + previous_summary
+            )
+
+        sources = assessment.get("sources") or []
+        query_sources = [
+            source for source in (evidence_summary.get("sources") or [])
+            if source.get("status") in {
+                "success_with_results", "success_no_results", "temporarily_unavailable"
+            }
+        ]
+        assessment["sources"] = list({
+            item.get("url"): item for item in [*sources, *query_sources] if item.get("url")
+        }.values())
+        return assessment
+
+    def _build_evidence_limited_assessment(
+        self,
+        jd_analysis: dict,
+        user_profile: Optional[dict] = None,
+        job_info: Optional[dict] = None,
+    ) -> dict:
+        """仅根据用户提供的 JD 原文输出风险，不伪造企业外部事实。"""
+        job_info = job_info or {}
+        overtime_risk = jd_analysis.get("overtime_risk", "low")
+        fake_risk = jd_analysis.get("fake_job_suspicion", "low")
+        kpi_risk = jd_analysis.get("kpi_brushing_suspicion", "low")
+        risk_order = {"low": 0, "medium": 1, "high": 2, "critical": 3}
+        highest = max(
+            (overtime_risk, fake_risk, kpi_risk),
+            key=lambda value: risk_order.get(value, 0),
+        )
+        risk_level = "high" if highest in {"high", "critical"} else ("medium" if highest == "medium" else "low")
+        recommendation_index = {"low": 4, "medium": 3, "high": 2}[risk_level]
+
+        red_flags = list(jd_analysis.get("fake_job_reasons", []))
+        if not red_flags and jd_analysis.get("overtime_signals"):
+            red_flags.append("JD 中存在可能暗示高强度工作的词语")
+
+        preferences = (user_profile or {}).get("preferences", {})
+        if (
+            preferences.get("labor_intensity") == "排斥高强度"
+            and overtime_risk in {"medium", "high"}
+        ):
+            red_flags.append("该 JD 的工作强度信号与你明确排斥高强度工作的偏好冲突")
+        schedule = jd_analysis.get("work_schedule_inferred", "")
+        if preferences.get("weekend_preference") == "必须双休" and any(
+            item in schedule for item in ("单休", "大小周")
+        ):
+            red_flags.append(f"该 JD 出现{schedule}，与你的必须双休条件冲突")
+
+        source_evidence = job_info.get("source_evidence") or {}
+        sources = []
+        if source_evidence.get("final_url"):
+            sources.append({
+                "title": source_evidence.get("page_title") or "岗位公开页面",
+                "url": source_evidence["final_url"],
+                "fetched_at": source_evidence.get("fetched_at"),
+                "status": "fetched",
+                "supports": "仅支持岗位原文与页面当时展示的信息",
+            })
+        company_name = job_info.get("company_name") or "该企业"
+        verification_tasks = self._official_verification_tasks(company_name)
+
+        positive_points = []
+        if job_info.get("salary_min") and job_info.get("salary_max"):
+            positive_points.append("JD 提供了明确薪资范围，但固定薪资、绩效占比和职级仍需确认")
+        if job_info.get("location"):
+            positive_points.append(f"JD 提供了工作地点：{job_info['location']}")
+        if len(str(job_info.get("jd_raw_text") or job_info.get("job_description") or "")) >= 200:
+            positive_points.append("岗位职责和要求的信息量相对完整，便于逐条核实")
+
+        return {
+            "risk_level": risk_level,
+            "recommendation_index": recommendation_index,
+            "recommendation_text": {
+                "low": "JD 暂未发现明显红旗，仍需面试核实",
+                "medium": "存在需进一步核实的 JD 信号",
+                "high": "发现高风险 JD 信号，建议谨慎",
+            }[risk_level],
+            "dimensions": {
+                "social_insurance": {
+                    "participants": None,
+                    "trend": "未核验",
+                    "status": "not_publicly_available",
+                    "assessment": "当前没有无需授权且稳定公开的全国企业参保人数接口，系统不会猜测社保人数。",
+                    "score": None,
+                    "verified": False,
+                },
+                "labor_disputes": {
+                    "total_cases": None,
+                    "recent_12m": None,
+                    "main_types": [],
+                    "status": "access_controlled",
+                    "assessment": "裁判文书官方查询受登录和访问控制限制，当前 Agent 不绕过验证；不能提供劳动争议数量。",
+                    "score": None,
+                    "verified": False,
+                },
+                "business_risk": {
+                    "abnormal_operations": None,
+                    "administrative_penalties": None,
+                    "status": "access_controlled",
+                    "assessment": "国家企业信用信息公示系统需要交互验证，当前 Agent 不绕过验证码；工商风险需通过下方官方入口人工核验。",
+                    "score": None,
+                    "verified": False,
+                },
+                "online_reputation": {
+                    "overall_sentiment": "未核验",
+                    "common_complaints": [],
+                    "highlights": [],
+                    "status": "not_queried",
+                    "assessment": "等待实时公开网页检索；只保留包含企业全称的来源，不直接概括员工口碑。",
+                    "score": None,
+                    "verified": False,
+                },
+                "jd_analysis": {
+                    **jd_analysis,
+                    "assessment": jd_analysis.get("jd_analysis_summary", ""),
+                    "score": {"low": 4, "medium": 3, "high": 1}.get(risk_level, 3),
+                    "verified": True,
+                    "source": source_evidence.get("final_url") or "用户粘贴/上传的岗位描述",
+                },
+                "match_with_user": {
+                    "assessment": "本阶段尚未计算画像匹配分。",
+                    "score": None,
+                    "verified": False,
+                },
+            },
+            "overall_score": {"low": 2, "medium": 5, "high": 8}[risk_level],
+            "summary": (
+                ("系统已读取并分析公开岗位页面。" if sources else "当前报告仅分析用户提供的岗位描述。")
+                + "企业社保、劳动争议、工商风险和网络口碑均未联网核验，不提供具体数字。"
+                f" {jd_analysis.get('jd_analysis_summary', '')}"
+            ).strip(),
+            "red_flags": list(dict.fromkeys(red_flags)),
+            "positive_points": positive_points,
+            "advice": (
+                "建议按以下顺序核实：1）让招聘方书面说明固定薪资、绩效占比和试用期折扣；"
+                "2）确认日常下班时间、月均加班天数、调休与加班费；"
+                "3）确认周末制度和紧急响应频率；"
+                "4）用下方官方入口按企业全称核对登记状态、经营异常、行政处罚与公开裁判文书。"
+            ),
+            "verification_status": "jd_source_fetched" if sources else "jd_only",
+            "sources": sources,
+            "verification_tasks": verification_tasks,
+        }
+
+    @staticmethod
+    def _official_verification_tasks(company_name: str) -> list[dict]:
+        """提供免费官方人工核验入口，不把入口本身冒充为已经查到的结论。"""
+        search_term = company_name.strip()
+        return [
+            {
+                "dimension": "工商登记/经营异常",
+                "title": "国家企业信用信息公示系统",
+                "url": "https://www.gsxt.gov.cn/index.html",
+                "search_term": search_term,
+                "status": "manual_required",
+                "instructions": "搜索企业全称，核对统一社会信用代码、登记状态、经营异常名录和行政处罚。",
+            },
+            {
+                "dimension": "公共信用记录",
+                "title": "信用中国",
+                "url": "https://www.creditchina.gov.cn/",
+                "search_term": search_term,
+                "status": "manual_required",
+                "instructions": "搜索企业全称，查看网站公开的行政管理与失信相关信息。",
+            },
+            {
+                "dimension": "公开裁判文书",
+                "title": "中国裁判文书网",
+                "url": "https://wenshu.court.gov.cn/",
+                "search_term": f"{search_term} 劳动争议",
+                "status": "manual_required",
+                "instructions": "登录后以企业全称为当事人关键词，并结合“劳动争议”等案由筛选；同一案件可能有多份文书，不可直接按结果数计案件数。",
+            },
+            {
+                "dimension": "被执行/失信信息",
+                "title": "中国执行信息公开网",
+                "url": "https://zxgk.court.gov.cn/",
+                "search_term": search_term,
+                "status": "manual_required",
+                "instructions": "按企业全称查询公开执行信息，并核对主体名称和统一社会信用代码，避免同名误判。",
+            },
+        ]
 
     # ─── JD 话术分析 ─────────────────────────────────────────────────
 
     async def _analyze_jd(self, job_info: dict) -> dict:
-        """分析 JD 话术陷阱"""
-        salary_min = job_info.get("salary_min", "未知")
-        salary_max = job_info.get("salary_max", "未知")
-        if salary_min and salary_max:
-            salary_str = f"{salary_min}-{salary_max}"
-        else:
-            salary_str = "未标注"
+        """基于用户提供的 JD 原文做可复现规则分析，不生成原文不存在的事实。"""
+        jd_text = str(job_info.get("jd_raw_text") or job_info.get("job_description") or "")
+        overtime_phrases = [
+            "抗压能力强", "能承受较大压力", "拥抱变化", "创业精神", "结果导向",
+            "高强度工作", "大小周", "单休", "996", "随时响应", "服从加班",
+        ]
+        kpi_phrases = [
+            "长期招聘", "急招", "大量招聘", "无需经验", "当天入职", "高薪轻松",
+            "零基础高薪", "入职缴费", "培训费", "押金",
+        ]
+        overtime_signals = [phrase for phrase in overtime_phrases if phrase in jd_text]
+        kpi_signals = [phrase for phrase in kpi_phrases if phrase in jd_text]
 
-        prompt = JD_ANALYSIS_PROMPT.format(
-            company_name=job_info.get("company_name", "未知"),
-            job_title=job_info.get("job_title", "未知"),
-            salary_min=salary_min,
-            salary_max=salary_max,
-            location=job_info.get("location", "未知"),
-            jd_text=job_info.get("jd_raw_text", "") or job_info.get("job_description", "")[:3000],
-            benefits=json.dumps(job_info.get("benefits", []), ensure_ascii=False),
+        salary_min = job_info.get("salary_min")
+        salary_max = job_info.get("salary_max")
+        salary_range_too_wide = bool(
+            salary_min and salary_max and salary_min > 0 and salary_max / salary_min >= 2.5
         )
 
-        messages = [
-            {"role": "system", "content": "你是一个精确的 JSON 输出引擎。"},
-            {"role": "user", "content": prompt},
-        ]
+        if any(phrase in overtime_signals for phrase in ["单休", "996", "服从加班", "高强度工作"]):
+            overtime_risk = "high"
+        elif overtime_signals:
+            overtime_risk = "medium"
+        else:
+            overtime_risk = "low"
 
-        try:
-            response = await llm_gateway.chat(messages, provider="zhipu", temperature=0.2)
-            return json.loads(self._clean_json(response))
-        except Exception as e:
-            logger.error(f"[BackgroundCheck] JD分析失败: {e}")
-            return {
-                "overtime_signals": [],
-                "overtime_risk": "unknown",
-                "salary_authenticity": "无法判断",
-                "fake_job_suspicion": "low",
-                "kpi_brushing_suspicion": "low",
-            }
+        fake_suspicion = "high" if any(
+            phrase in kpi_signals for phrase in ["入职缴费", "培训费", "押金", "零基础高薪"]
+        ) else ("medium" if kpi_signals or salary_range_too_wide else "low")
+
+        if "双休" in jd_text:
+            schedule = "双休（仅依据 JD 文案，需面试确认）"
+        elif "大小周" in jd_text:
+            schedule = "大小周"
+        elif "单休" in jd_text:
+            schedule = "单休"
+        else:
+            schedule = "未知"
+
+        reasons = []
+        if overtime_signals:
+            reasons.append("发现可能暗示高强度工作的原文词语：" + "、".join(overtime_signals))
+        if kpi_signals:
+            reasons.append("发现需进一步核实的招聘话术：" + "、".join(kpi_signals))
+        if salary_range_too_wide:
+            reasons.append("薪资上下限跨度达到 2.5 倍或以上，需确认固定薪资、绩效和职级范围")
+
+        return {
+            "overtime_signals": overtime_signals,
+            "overtime_risk": overtime_risk,
+            "salary_authenticity": "薪资范围过大，需核实" if salary_range_too_wide else "仅依据 JD 无法核验真实性",
+            "salary_analysis": "；".join(reasons) if reasons else "未发现明确异常，但仍需面试核实",
+            "fake_job_suspicion": fake_suspicion,
+            "fake_job_reasons": reasons,
+            "kpi_brushing_suspicion": "medium" if kpi_signals else "low",
+            "work_schedule_inferred": schedule,
+            "jd_quality": "过于简略" if len(jd_text.strip()) < 80 else "信息量尚可",
+            "jd_analysis_summary": "；".join(reasons) if reasons else "未在 JD 原文中发现明确高风险话术。",
+            "evidence_phrases": overtime_signals + kpi_signals,
+        }
 
     # ─── 企业信息检索 ────────────────────────────────────────────────
 
@@ -475,6 +917,54 @@ class BackgroundCheckAgent:
         advice = assessment.get("advice", "")
         if advice:
             lines.append(f"\n## 💡 投递建议\n\n{advice}")
+
+        jd_dimension = assessment.get("dimensions", {}).get("jd_analysis", {})
+        evidence_phrases = jd_dimension.get("evidence_phrases", [])
+        lines.append("\n## 🔎 证据边界\n")
+        if evidence_phrases:
+            lines.append("本次在 JD 原文中命中的信号：" + "、".join(evidence_phrases) + "。")
+        else:
+            lines.append("JD 原文未命中内置高风险词，但这不等于企业外部风险已经核验。")
+
+        dimension_labels = {
+            "social_insurance": "社保人数",
+            "labor_disputes": "劳动争议",
+            "business_risk": "工商风险",
+            "online_reputation": "员工口碑",
+        }
+        dimensions = assessment.get("dimensions", {})
+        verified_labels = [
+            label
+            for key, label in dimension_labels.items()
+            if dimensions.get(key, {}).get("verified")
+        ]
+        unverified_labels = [
+            label
+            for key, label in dimension_labels.items()
+            if not dimensions.get(key, {}).get("verified")
+        ]
+        if verified_labels:
+            lines.append("已绑定官方来源的维度：" + "、".join(verified_labels) + "。")
+        if unverified_labels:
+            lines.append("仍未核验的维度：" + "、".join(unverified_labels) + "；报告不会补造数字。")
+
+        sources = assessment.get("sources", [])
+        if sources:
+            lines.append("\n## 🔗 可核验来源\n")
+            for source in sources:
+                lines.append(
+                    f"- [{source.get('title') or source.get('url')}]({source.get('url')})："
+                    f"仅支持 {source.get('supports') or '来源页面直接展示的内容'}"
+                )
+
+        tasks = assessment.get("verification_tasks", [])
+        if tasks:
+            lines.append("\n## 🧭 下一步官方核验\n")
+            for task in tasks:
+                lines.append(
+                    f"- {task.get('dimension')}：{task.get('title')}，"
+                    f"搜索“{task.get('search_term')}”。{task.get('instructions')}"
+                )
 
         return "\n".join(lines)
 

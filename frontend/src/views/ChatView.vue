@@ -44,7 +44,7 @@
           <el-avatar v-else :size="36" style="background: #409eff">JG</el-avatar>
         </div>
         <div class="message-content">
-          <div class="message-text" v-html="formatMessage(msg.content)"></div>
+          <div class="message-text">{{ msg.content }}</div>
           <div v-if="msg.meta" class="message-meta">
             <el-tag v-if="msg.meta.completeness" size="small" type="success">
               画像完整度 {{ msg.meta.completeness }}%
@@ -62,6 +62,7 @@
           <div class="typing-indicator">
             <span></span><span></span><span></span>
           </div>
+          <div v-if="statusMessage" class="step-status">{{ statusMessage }}</div>
         </div>
       </div>
     </div>
@@ -81,11 +82,21 @@
             action="#"
             :auto-upload="false"
             :show-file-list="false"
-            accept=".txt,.md,.pdf,.doc,.docx"
+            accept=".txt,.md,.pdf,.docx,.png,.jpg,.jpeg,.webp"
             :on-change="handleFileChange"
             :disabled="loading"
           >
             <el-button :icon="Paperclip" circle size="small" title="上传简历/文件" />
+          </el-upload>
+          <el-upload
+            action="#"
+            :auto-upload="false"
+            :show-file-list="false"
+            accept=".png,.jpg,.jpeg,.webp"
+            :on-change="handleJobImageChange"
+            :disabled="loading"
+          >
+            <el-button :icon="Picture" circle size="small" title="上传岗位截图进行避雷分析" />
           </el-upload>
           <span class="char-count" v-if="inputText.length > 0">{{ inputText.length }} 字</span>
         </div>
@@ -99,8 +110,11 @@
 
 <script setup>
 import { ref, nextTick, onMounted } from 'vue'
-import { createSession, sendMessage as sendChatMessage } from '../api/chat'
-import { Promotion, Paperclip } from '@element-plus/icons-vue'
+import { createSession, getHistory, getStreamEvents, sendMessage as sendChatMessage } from '../api/chat'
+import { uploadMyResume } from '../api/profile'
+import { analyzeJobImage } from '../api/jobs'
+import { Promotion, Paperclip, Picture } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 
 const inputText = ref('')
 const loading = ref(false)
@@ -108,16 +122,53 @@ const messages = ref([])
 const messagesContainer = ref(null)
 const sessionId = ref(null)
 const backendStatus = ref('disconnected')
+const statusMessage = ref('')
 
-// 初始化：创建会话
+const mapHistoryMessage = (msg) => ({
+  role: msg.role,
+  content: msg.content,
+  time: msg.created_at ? new Date(msg.created_at).toLocaleTimeString() : '',
+})
+
+const startNewSession = async () => {
+  const res = await createSession('profile_building')
+  sessionId.value = res.session_id
+  sessionStorage.setItem('chat_session_id', String(res.session_id))
+  backendStatus.value = 'connected'
+  if (res.first_message) {
+    messages.value.push({
+      role: 'assistant',
+      content: res.first_message,
+      time: new Date().toLocaleTimeString(),
+      meta: { completeness: res.completeness },
+    })
+  }
+}
+
+// 初始化：优先恢复当前浏览器会话，否则由后端主动发起画像对话。
 onMounted(async () => {
   try {
-    const res = await createSession(1, 'general')  // 默认用户 ID=1
-    sessionId.value = res.session_id
-    backendStatus.value = 'connected'
+    const savedSessionId = Number(sessionStorage.getItem('chat_session_id'))
+    if (savedSessionId) {
+      try {
+        const history = await getHistory(savedSessionId)
+        sessionId.value = savedSessionId
+        messages.value = (history.messages || []).map(mapHistoryMessage)
+        backendStatus.value = 'connected'
+        return
+      } catch {
+        sessionStorage.removeItem('chat_session_id')
+      }
+    }
+    await startNewSession()
   } catch (e) {
     console.warn('后端未连接:', e.message)
     backendStatus.value = 'disconnected'
+    messages.value.push({
+      role: 'assistant',
+      content: '暂时无法创建画像会话，请检查登录状态或后端服务后重试。',
+      time: new Date().toLocaleTimeString(),
+    })
   }
 })
 
@@ -140,84 +191,164 @@ const sendMessage = async () => {
   if (sessionId.value && backendStatus.value === 'connected') {
     await sendViaSSE(text)
   } else {
-    // 后端未连接，使用降级回复
-    sendMockResponse(text)
+    loading.value = false
+    messages.value.push({
+      role: 'assistant',
+      content: '后端当前不可用，消息没有被处理。请恢复服务后重试。',
+      time: new Date().toLocaleTimeString(),
+    })
   }
 }
 
 const sendViaSSE = async (text) => {
+  let streamId = ''
+  let contiguousSequence = 0
+  let maxSequence = 0
+  let streamCompleted = false
+  const seenEventIds = new Set()
+  const receivedSequences = new Set()
+
+  const applyEvent = (eventType, data, frameEventId = '') => {
+    const eventId = frameEventId || data.event_id || ''
+    if (eventId && seenEventIds.has(eventId)) return
+    if (eventId) seenEventIds.add(eventId)
+
+    const sequence = Number(data.sequence || 0)
+    if (sequence > 0) {
+      receivedSequences.add(sequence)
+      maxSequence = Math.max(maxSequence, sequence)
+      while (receivedSequences.has(contiguousSequence + 1)) contiguousSequence += 1
+    }
+    if (eventType === 'done') streamCompleted = true
+    handleSSEEvent(eventType, data)
+  }
+
+  const replayMissingEvents = async () => {
+    if (!streamId) return false
+    const replay = await getStreamEvents(sessionId.value, streamId, contiguousSequence)
+    const events = [...(replay.events || [])].sort((a, b) => a.sequence - b.sequence)
+    for (const event of events) {
+      applyEvent(event.event, event.data || {}, event.id)
+    }
+    return Boolean(replay.completed && streamCompleted && contiguousSequence >= Number(replay.last_sequence || 0))
+  }
+
   try {
     const response = await sendChatMessage(sessionId.value, text)
 
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`)
     }
+    streamId = response.headers.get('X-Stream-ID') || ''
 
     const reader = response.body.getReader()
     const decoder = new TextDecoder()
     let buffer = ''
-    let assistantContent = ''
+
+    const processFrame = (frame) => {
+      if (!frame.trim()) return
+      let eventType = 'message'
+      let eventId = ''
+      const dataLines = []
+      for (const line of frame.split(/\r?\n/)) {
+        if (line.startsWith('id:')) {
+          eventId = line.slice(3).trim()
+        } else if (line.startsWith('event:')) {
+          eventType = line.slice(6).trim() || 'message'
+        } else if (line.startsWith('data:')) {
+          dataLines.push(line.slice(5).replace(/^ /, ''))
+        }
+      }
+      if (!dataLines.length) return
+      try {
+        const data = JSON.parse(dataLines.join('\n'))
+        streamId = streamId || data.stream_id || ''
+        applyEvent(eventType, data, eventId)
+      } catch (error) {
+        console.warn('忽略无法解析的 SSE 事件:', error)
+      }
+    }
+
+    const consumeFrames = (flush = false) => {
+      const frames = buffer.split(/\r?\n\r?\n/)
+      buffer = flush ? '' : (frames.pop() || '')
+      for (const frame of frames) processFrame(frame)
+      if (flush && buffer.trim()) processFrame(buffer)
+    }
 
     while (true) {
       const { done, value } = await reader.read()
       if (done) break
 
       buffer += decoder.decode(value, { stream: true })
-      const lines = buffer.split('\n')
-      buffer = lines.pop() || ''
-
-      for (const line of lines) {
-        if (line.startsWith('event: ')) {
-          const eventType = line.slice(7).trim()
-          continue
-        }
-        if (line.startsWith('data: ')) {
-          try {
-            const data = JSON.parse(line.slice(6))
-            handleSSEEvent(data)
-            if (data.content) {
-              assistantContent = data.content
-            }
-          } catch (e) {
-            // 非 JSON 数据，跳过
-          }
-        }
-      }
+      consumeFrames()
     }
+    buffer += decoder.decode()
+    consumeFrames(true)
 
-    loading.value = false
-    if (assistantContent) {
-      messages.value.push({
-        role: 'assistant',
-        content: assistantContent,
-        time: new Date().toLocaleTimeString(),
-      })
+    if (!streamCompleted || contiguousSequence < maxSequence) {
+      const recovered = await replayMissingEvents()
+      if (!recovered) throw new Error('流式响应不完整')
     }
   } catch (e) {
     console.error('SSE 请求失败:', e)
+    let recovered = false
+    try {
+      recovered = await replayMissingEvents()
+    } catch (replayError) {
+      console.warn('SSE 补偿失败:', replayError)
+    }
+    if (!recovered) {
+      messages.value.push({
+        role: 'assistant',
+        content: `消息流中断：${e.message || '网络连接异常'}。已保留服务器成功保存的内容，请重试未完成的操作。`,
+        time: new Date().toLocaleTimeString(),
+      })
+    }
+  } finally {
     loading.value = false
-    sendMockResponse(text)
+    statusMessage.value = ''
+    nextTick(() => scrollToBottom())
   }
 }
 
-const handleSSEEvent = (data) => {
-  // 处理不同 SSE 事件类型
-  switch (true) {
-    case !!data.stage:
-      // 状态更新事件
-      break
-    case !!data.updated_fields:
-      // 画像更新事件
-      break
-    case !!data.summary:
-      // 简历解析事件
-      messages.value.push({
-        role: 'assistant',
-        content: `📄 简历解析完成！\n${data.summary}`,
-        time: new Date().toLocaleTimeString(),
-        meta: { completeness: data.completeness },
-      })
-      break
+const handleSSEEvent = (eventType, data) => {
+  if (eventType === 'status') {
+    statusMessage.value = data.message || '正在处理...'
+    return
+  }
+  if (eventType === 'profile_updated') {
+    const fields = (data.updated_fields || []).join('、')
+    ElMessage.success(fields ? `画像已更新：${fields}` : '画像已更新')
+    return
+  }
+  if (eventType === 'resume_parsed' && data.summary) {
+    messages.value.push({
+      role: 'assistant',
+      content: `📄 简历解析完成！\n${data.summary}`,
+      time: new Date().toLocaleTimeString(),
+      meta: { completeness: data.completeness },
+    })
+    return
+  }
+  if (eventType === 'message' && data.content) {
+    messages.value.push({
+      role: 'assistant',
+      content: data.content,
+      time: new Date().toLocaleTimeString(),
+    })
+    return
+  }
+  if (eventType === 'analysis_complete' && data.summary) {
+    statusMessage.value = '岗位分析已完成'
+    return
+  }
+  if (eventType === 'error') {
+    messages.value.push({
+      role: 'assistant',
+      content: `处理失败：${data.message || '未知错误'}`,
+      time: new Date().toLocaleTimeString(),
+    })
   }
 }
 
@@ -225,7 +356,7 @@ const handleFileChange = async (uploadFile) => {
   const file = uploadFile.raw
   if (!file) return
 
-  const validTypes = ['.txt', '.md', '.pdf', '.doc', '.docx']
+  const validTypes = ['.txt', '.md', '.pdf', '.docx', '.png', '.jpg', '.jpeg', '.webp']
   const ext = '.' + file.name.split('.').pop().toLowerCase()
   if (!validTypes.includes(ext)) {
     messages.value.push({
@@ -244,40 +375,35 @@ const handleFileChange = async (uploadFile) => {
   })
 
   if (backendStatus.value === 'connected') {
-    // 使用后端上传 API
     try {
-      const formData = new FormData()
-      formData.append('file', file)
-      const res = await fetch(`/api/profile/1/upload-resume`, {
-        method: 'POST',
-        body: formData,
-      })
-      const data = await res.json()
+      const data = await uploadMyResume(file)
       if (data.code === 0) {
         const d = data.data
         messages.value.push({
           role: 'assistant',
-          content: `📄 简历解析完成！\n\n- 学历: ${d.summary.degree || '未知'}\n- 学校: ${d.summary.school || '未知'}\n- 项目: ${d.summary.projects_count} 个\n- 技能: ${d.summary.skills_count} 个\n- 画像完整度: ${d.completeness}%`,
+          content: `📄 简历解析完成！\n\n- 学历: ${d.summary.degree || '未知'}\n- 学校: ${d.summary.school || '未知'}\n- 项目: ${d.summary.projects_count} 个\n- 技能: ${d.summary.skills_count} 个\n- 识别文字: ${d.file?.extracted_chars || 0} 字${d.file?.ocr_used ? '（本地 OCR）' : ''}\n- 画像完整度: ${d.completeness}%`,
           time: new Date().toLocaleTimeString(),
           meta: { completeness: d.completeness },
         })
       } else {
-        throw new Error(data.detail || '解析失败')
+        throw new Error(data.detail || data.message || '解析失败')
       }
     } catch (e) {
+      const detail = e.response?.data?.detail
+      const reason = detail?.message || detail || e.message || '未知错误'
       messages.value.push({
         role: 'assistant',
-        content: `文件上传失败: ${e.message}。请尝试直接粘贴简历文本。`,
+        content: `文件上传失败：${reason}。请根据提示调整文件后重试。`,
         time: new Date().toLocaleTimeString(),
       })
     }
   } else {
     // 降级：前端读取文本内容
-    if (file.type === 'application/pdf' || file.name.endsWith('.pdf') ||
-        file.name.endsWith('.doc') || file.name.endsWith('.docx')) {
+    if (file.type === 'application/pdf' || file.type.startsWith('image/') ||
+        file.name.endsWith('.pdf') || file.name.endsWith('.docx')) {
       messages.value.push({
         role: 'assistant',
-        content: 'PDF/Word 文件需要后端支持。后端未连接，请直接粘贴简历文本。',
+        content: 'PDF、DOCX 和图片识别需要后端支持。后端未连接，请直接粘贴简历文本。',
         time: new Date().toLocaleTimeString(),
       })
       return
@@ -299,42 +425,53 @@ const handleFileChange = async (uploadFile) => {
   }
 }
 
-const sendMockResponse = (text) => {
-  setTimeout(() => {
-    loading.value = false
-
-    let response
-    if (text.length > 200 && (
-      text.includes('教育') || text.includes('项目') || text.includes('经历')
-    )) {
-      response = '简历内容已收到，但后端当前不可用，无法自动解析。请检查网络连接或稍后再试。'
-    } else if (text.includes('岗位') || text.includes('链接') || text.includes('zhipin')) {
-      response = '后端连接异常，暂时无法分析岗位。请检查服务状态或稍后再试。'
-    } else {
-      response = '后端连接异常，暂时无法处理你的请求。请检查服务状态或刷新页面重试。'
-    }
-
+const handleJobImageChange = async (uploadFile) => {
+  const file = uploadFile.raw
+  if (!file) return
+  messages.value.push({
+    role: 'user',
+    content: `🖼️ 上传了岗位截图：${file.name}`,
+    time: new Date().toLocaleTimeString(),
+  })
+  if (backendStatus.value !== 'connected') {
     messages.value.push({
       role: 'assistant',
-      content: response,
+      content: '后端未连接，岗位截图没有被处理。请恢复服务后重试。',
       time: new Date().toLocaleTimeString(),
     })
+    return
+  }
+
+  loading.value = true
+  statusMessage.value = '正在 OCR 识别岗位截图并分析风险...'
+  try {
+    const response = await analyzeJobImage(file, sessionId.value)
+    if (response.code !== 0) throw new Error(response.message || '岗位截图分析失败')
+    const data = response.data
+    const report = data.report || {}
+    messages.value.push({
+      role: 'assistant',
+      content: `## 岗位截图分析完成\n\n- 企业：${data.job_info?.company_name || '未识别'}\n- 岗位：${data.job_info?.job_title || '未识别'}\n- OCR：识别 ${data.image_ocr?.extracted_chars || 0} 字\n- 风险：${report.recommendation_text || report.risk_level || '待核实'}\n\n${report.summary || ''}\n\n${report.advice || ''}`,
+      time: new Date().toLocaleTimeString(),
+    })
+  } catch (error) {
+    const detail = error.response?.data?.detail
+    const reason = detail?.message || detail || error.message || '未知错误'
+    messages.value.push({
+      role: 'assistant',
+      content: `岗位截图分析失败：${reason}`,
+      time: new Date().toLocaleTimeString(),
+    })
+  } finally {
+    loading.value = false
+    statusMessage.value = ''
     nextTick(() => scrollToBottom())
-  }, 800)
+  }
 }
 
 const quickStart = () => {
   inputText.value = '你好，我想建立我的求职画像'
   sendMessage()
-}
-
-const formatMessage = (text) => {
-  if (!text) return ''
-  // 简单的 Markdown 转换
-  return text
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\n/g, '<br>')
-    .replace(/•/g, '&nbsp;&nbsp;•')
 }
 
 const scrollToBottom = () => {
@@ -478,6 +615,12 @@ const scrollToBottom = () => {
 
 .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
 .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+.step-status {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #909399;
+}
 
 @keyframes typing {
   0%, 60%, 100% { transform: translateY(0); }

@@ -11,8 +11,10 @@ Responsibilities:
 7. Generate greeting message for job application
 """
 
+import asyncio
 import json
 import logging
+import re
 from typing import Optional
 
 from app.llm.gateway import llm_gateway
@@ -134,7 +136,7 @@ PROJECT_REWRITE_PROMPT = """You are a professional resume writer. Rewrite a proj
 
 ## Rewriting Rules
 1. Use STAR method (Situation, Task, Action, Result) implicitly
-2. Include quantifiable results (numbers, percentages)
+2. Quantifiable results may only be retained when the same number appears in the original project; never invent numbers or percentages
 3. Use strong action verbs (Designed, Implemented, Optimized, Led, Built)
 4. Naturally incorporate matching keywords from JD requirements
 5. Keep each bullet point 1-2 lines, total 3-5 bullet points
@@ -144,7 +146,7 @@ PROJECT_REWRITE_PROMPT = """You are a professional resume writer. Rewrite a proj
 ```json
 {{
   "project_name": "name",
-  "rewritten_description": "3-5 bullet points, each starting with a strong verb, containing quantifiable results",
+  "rewritten_description": "3-5 bullet points grounded in the original project; retain numbers only when present in the source",
   "tech_tags": ["tech1", "tech2"]
 }}
 ```
@@ -192,36 +194,38 @@ RESUME_ASSEMBLY_PROMPT = """You are a professional resume formatter. Assemble a 
 
 ## Output Format
 ```markdown
-# {Full Name}
+# [Full Name]
 
-{Contact Info line: City | Phone | Email}
+[Contact Info line: City | Phone | Email]
 
 ## Job Target
-**{Job Title}**
+**[Job Title]**
 
 ## Self Evaluation
-{Self evaluation text}
+[Self evaluation text]
 
 ## Education
-{Education entries}
+[Education entries]
 
 ## Skills
-{Skills grouped by category}
+[Skills grouped by category]
 
 ## Project Experience
-### {Project Name}
-*{Role}* | {Time Period}
+### [Project Name]
+*[Role]* | [Time Period]
 
-{3-5 bullet points of rewritten description}
+[3-5 bullet points of rewritten description]
 
-**Tech Stack:** {tech tags}
+**Tech Stack:** [tech tags]
 
-### {Project Name 2}
+### [Project Name 2]
 ...
 ```
 
 ## Rules
 - Use clean, professional formatting
+- Only use facts explicitly present in Candidate Information and Selected Projects
+- Never add schools, skills, dates, metrics, percentages, user counts, performance gains or responsibilities
 - Keep it to 1 page worth of content (be selective)
 - Education section: only list the highest degree if multiple
 - Skills section: group by category, max 10-12 skills
@@ -282,10 +286,22 @@ class ResumeGeneratorAgent:
 
         if not projects:
             logger.warning("[ResumeGen] No projects found for user")
+            resume_md = self._build_text_only_fallback_resume(user_profile, job_info)
+            greeting = await self._generate_greeting(user_profile, job_info, [])
             return {
-                "error": "No project experience found. Please add projects to your profile first.",
-                "resume_markdown": "",
-                "greeting": "",
+                "resume_markdown": resume_md,
+                "greeting": greeting,
+                "selected_projects": [],
+                "self_evaluation": "",
+                "output_mode": "text_only",
+                "generation_warning": "画像中还没有可用的项目、实习、比赛、科研或工作经历，已先生成可复制的文本版材料和打招呼语；建议继续通过对话补充真实经历后再生成正式简历。",
+                "fact_check": {
+                    "verification_status": "text_only_fallback",
+                    "has_fabrications": False,
+                    "fabrications": [],
+                    "confidence_score": 1.0,
+                    "summary": "资料不足，未让模型虚构经历；本次只使用已保存画像和目标岗位生成文本版求职材料。",
+                },
             }
 
         # 2. Select and rank projects
@@ -293,10 +309,9 @@ class ResumeGeneratorAgent:
         logger.info(f"[ResumeGen] Selected {len(selected)} projects")
 
         # 3. Rewrite each project description
-        rewritten = []
-        for proj in selected:
-            rw = await self._rewrite_project(proj, job_info)
-            rewritten.append(rw)
+        rewritten = await asyncio.gather(*(
+            self._rewrite_project(proj, job_info) for proj in selected
+        ))
 
         # 4. Generate self evaluation
         self_eval = await self._generate_self_evaluation(user_profile, job_info)
@@ -307,14 +322,76 @@ class ResumeGeneratorAgent:
         # 6. Generate greeting
         greeting = await self._generate_greeting(user_profile, job_info, rewritten)
 
+        # 7. Fail-closed fact verification. A draft is never considered successful
+        # merely because the language model returned text.
+        fact_check = await self.fact_check_resume(user_profile, resume_md)
+        number_issues = self._find_ungrounded_numbers(user_profile, resume_md)
+        if fact_check.get("verification_status") != "completed":
+            resume_md = self._build_deterministic_grounded_resume(user_profile, job_info)
+            number_issues = self._find_ungrounded_numbers(user_profile, resume_md)
+            if number_issues:
+                return {"error": "本地事实保护发现未能回溯的数字，请先核对画像中的原始经历。"}
+            fact_check = {
+                "verification_status": "deterministic_grounded",
+                "has_fabrications": False,
+                "fabrications": [],
+                "confidence_score": 1.0,
+                "summary": "模型核查不可用，已改用只拼接数据库原始事实的确定性简历。",
+            }
+        if number_issues:
+            fact_check["has_fabrications"] = True
+            fact_check.setdefault("fabrications", []).extend(number_issues)
+
+        if fact_check.get("has_fabrications"):
+            corrected = await self.safeguard_resume(user_profile, resume_md, fact_check)
+            if not corrected:
+                resume_md = self._build_deterministic_grounded_resume(user_profile, job_info)
+                number_issues = self._find_ungrounded_numbers(user_profile, resume_md)
+                if number_issues:
+                    return {"error": "简历修正后仍有未核验数字，请完善真实经历资料。"}
+                fact_check = {
+                    "verification_status": "deterministic_grounded",
+                    "has_fabrications": False,
+                    "fabrications": [],
+                    "confidence_score": 1.0,
+                    "summary": "已丢弃未通过核查的模型草稿，改用数据库原始事实生成。",
+                }
+            else:
+                resume_md = corrected
+                fact_check = await self.fact_check_resume(user_profile, resume_md)
+                number_issues = self._find_ungrounded_numbers(user_profile, resume_md)
+                if (
+                    fact_check.get("verification_status") != "completed"
+                    or fact_check.get("has_fabrications")
+                    or number_issues
+                ):
+                    resume_md = self._build_deterministic_grounded_resume(user_profile, job_info)
+                    number_issues = self._find_ungrounded_numbers(user_profile, resume_md)
+                    if number_issues:
+                        return {"error": "简历修正后仍有未核验数字，请完善真实经历资料。"}
+                    fact_check = {
+                        "verification_status": "deterministic_grounded",
+                        "has_fabrications": False,
+                        "fabrications": [],
+                        "confidence_score": 1.0,
+                        "summary": "已丢弃未通过核查的模型草稿，改用数据库原始事实生成。",
+                    }
+
         return {
             "resume_markdown": resume_md,
             "greeting": greeting,
             "selected_projects": [
-                {"project_name": p.get("project_name"), "relevance_score": p.get("relevance_score")}
+                {
+                    "project_name": p.get("project_name")
+                    or (p.get("metadata") or {}).get("project_name"),
+                    "relevance_score": p.get("relevance_score"),
+                }
                 for p in selected
             ],
             "self_evaluation": self_eval,
+            "fact_check": fact_check,
+            "output_mode": "document",
+            "generation_warning": "",
         }
 
     # ─── RAG Retrieve Projects ─────────────────────────────────────
@@ -348,7 +425,17 @@ class ResumeGeneratorAgent:
             logger.warning(f"[ResumeGen] RAG search failed: {e}")
 
         # Fallback: use projects from user_profile directly
-        projects = user_profile.get("projects", [])
+        projects = list(user_profile.get("projects", []) or [])
+        for experience in user_profile.get("experiences", []) or []:
+            projects.append({
+                "project_name": experience.get("title"),
+                "role": experience.get("role"),
+                "description": experience.get("actions") or experience.get("description"),
+                "highlights": experience.get("achievements"),
+                "tech_stack": experience.get("tech_stack") or [],
+                "start_date": experience.get("start_date"),
+                "end_date": experience.get("end_date"),
+            })
         if projects:
             logger.info(f"[ResumeGen] Using {len(projects)} projects from profile (fallback)")
             return [
@@ -497,7 +584,11 @@ class ResumeGeneratorAgent:
             return await llm_gateway.chat(messages, provider="zhipu", temperature=0.6)
         except Exception as e:
             logger.error(f"[ResumeGen] Self evaluation failed: {e}")
-            return "Experienced developer with strong technical skills and a passion for building impactful products."
+            known_skills = "、".join(s.get("skill_name", "") for s in (skills_list or [])[:3] if s.get("skill_name"))
+            education = ""
+            if basic.get("degree") or basic.get("major"):
+                education = f"具备{basic.get('degree', '')}{basic.get('major', '')}背景，"
+            return f"{education}已记录的相关技能包括{known_skills or '画像中的现有技能'}，希望应聘{job_info.get('job_title', '目标岗位')}。"
 
     # ─── Assemble Resume ────────────────────────────────────────────
 
@@ -592,46 +683,187 @@ class ResumeGeneratorAgent:
 
         return "\n".join(lines)
 
+    def _build_deterministic_grounded_resume(
+        self, user_profile: dict, job_info: dict
+    ) -> str:
+        """Build a resume solely by copying persisted user facts."""
+        basic = user_profile.get("basic", {}) or {}
+        skills = user_profile.get("skills", []) or []
+        education = user_profile.get("education", []) or []
+        experiences = user_profile.get("experiences", []) or []
+        projects = user_profile.get("projects", []) or []
+        lines = [f"# {basic.get('full_name') or '个人简历'}", ""]
+        contact = [basic.get("current_city"), basic.get("email"), basic.get("phone")]
+        if any(contact):
+            lines.extend([" | ".join(str(item) for item in contact if item), ""])
+        lines.extend(["## 求职目标", job_info.get("job_title") or "目标岗位", ""])
+        if education or any(basic.get(key) for key in ("school", "major", "degree")):
+            lines.append("## 教育背景")
+            if education:
+                for item in education:
+                    lines.append(" - ".join(str(value) for value in (
+                        item.get("school"), item.get("major"), item.get("degree")
+                    ) if value))
+            else:
+                lines.append(" - ".join(str(value) for value in (
+                    basic.get("school"), basic.get("major"), basic.get("degree")
+                ) if value))
+            lines.append("")
+        if skills:
+            lines.extend(["## 专业技能", "、".join(
+                item.get("skill_name") for item in skills if item.get("skill_name")
+            ), ""])
+        grounded_items = []
+        for item in experiences:
+            grounded_items.append({
+                "title": item.get("title"), "role": item.get("role"),
+                "description": item.get("actions") or item.get("description"),
+                "achievement": item.get("achievements"),
+                "tech": item.get("tech_stack") or [],
+            })
+        for item in projects:
+            grounded_items.append({
+                "title": item.get("project_name"), "role": item.get("role"),
+                "description": item.get("description"),
+                "achievement": item.get("highlights"),
+                "tech": item.get("tech_stack") or [],
+            })
+        if grounded_items:
+            lines.append("## 相关经历")
+            for item in grounded_items:
+                lines.append(f"### {item.get('title') or '未命名经历'}")
+                if item.get("role"):
+                    lines.append(f"角色：{item['role']}")
+                if item.get("description"):
+                    lines.append(f"- {item['description']}")
+                if item.get("achievement"):
+                    lines.append(f"- 成果：{item['achievement']}")
+                if item.get("tech"):
+                    lines.append(f"- 技术/工具：{'、'.join(item['tech'])}")
+                lines.append("")
+        return "\n".join(lines).strip()
+
+    def _build_text_only_fallback_resume(
+        self, user_profile: dict, job_info: dict, reason: str | None = None
+    ) -> str:
+        """Build a useful copy-first resume draft when formal generation cannot finish."""
+        basic = user_profile.get("basic", {}) or {}
+        skills = user_profile.get("skills", []) or []
+        education = user_profile.get("education", []) or []
+        experiences = user_profile.get("experiences", []) or []
+        projects = user_profile.get("projects", []) or []
+
+        name = basic.get("full_name") or "候选人"
+        job_title = job_info.get("job_title") or "目标岗位"
+        company_name = job_info.get("company_name") or "目标公司"
+        city = basic.get("current_city")
+        contact = [basic.get("email"), basic.get("phone")]
+        skill_names = [item.get("skill_name") for item in skills if item.get("skill_name")]
+
+        lines = [
+            f"# {name}｜{job_title} 求职材料草稿",
+            "",
+            "> 当前先输出可复制文本版。它不会编造项目、奖项或量化数字；正式 DOCX/PDF 生成失败时，也可以先复制这份文案继续投递或修改。",
+            "",
+            "## 基本信息",
+        ]
+        if city:
+            lines.append(f"- 所在城市：{city}")
+        if any(contact):
+            lines.append(f"- 联系方式：{' / '.join(str(item) for item in contact if item)}")
+        if basic.get("school") or basic.get("major") or basic.get("degree"):
+            edu_line = " / ".join(
+                str(item)
+                for item in (basic.get("school"), basic.get("major"), basic.get("degree"))
+                if item
+            )
+            lines.append(f"- 教育背景：{edu_line}")
+        lines.extend(["", "## 求职目标", f"- 目标岗位：{company_name} · {job_title}", ""])
+
+        if skill_names:
+            lines.extend(["## 技能关键词", "、".join(skill_names[:18]), ""])
+
+        grounded_items = []
+        for item in experiences:
+            grounded_items.append(
+                {
+                    "title": item.get("title") or item.get("company_name") or "经历",
+                    "role": item.get("role"),
+                    "description": item.get("actions") or item.get("description"),
+                    "achievement": item.get("achievements"),
+                    "tech": item.get("tech_stack") or [],
+                }
+            )
+        for item in projects:
+            grounded_items.append(
+                {
+                    "title": item.get("project_name") or "项目经历",
+                    "role": item.get("role"),
+                    "description": item.get("description"),
+                    "achievement": item.get("highlights"),
+                    "tech": item.get("tech_stack") or [],
+                }
+            )
+
+        lines.append("## 可直接放入简历的真实经历")
+        if grounded_items:
+            for item in grounded_items:
+                lines.append(f"### {item.get('title')}")
+                if item.get("role"):
+                    lines.append(f"- 角色：{item['role']}")
+                if item.get("description"):
+                    lines.append(f"- 工作内容：{item['description']}")
+                if item.get("achievement"):
+                    lines.append(f"- 结果/收获：{item['achievement']}")
+                if item.get("tech"):
+                    lines.append(f"- 技术/工具：{'、'.join(item['tech'])}")
+                lines.append("")
+        else:
+            lines.extend(
+                [
+                    "- 暂未在画像中找到可回溯的项目、实习、比赛、科研或工作经历。",
+                    "- 建议继续补充：项目背景、你负责的模块、使用技术、遇到的问题、解决方案、结果数据、团队规模、比赛/证书/科研产出。",
+                    "",
+                ]
+            )
+
+        lines.extend(
+            [
+                "## 面向该岗位的补充采集问题",
+                f"- 你是否做过与「{job_title}」相关的项目或课程设计？请描述背景、职责和技术栈。",
+                "- 有没有未写进原简历的比赛、实习、科研、开源或课程项目？",
+                "- 有没有可以核实的结果：上线、获奖、排名、用户量、性能提升、成本下降、导师/负责人评价？",
+                "- 你希望面试时重点讲哪一个项目？",
+            ]
+        )
+        if reason:
+            lines.extend(["", "## 本次降级原因", f"- {reason}"])
+        return "\n".join(lines).strip()
+
     # ─── Greeting ───────────────────────────────────────────────────
 
     async def _generate_greeting(
         self, user_profile: dict, job_info: dict, rewritten_projects: list[dict]
     ) -> str:
-        """Generate greeting message for job application"""
+        """Build a grounded greeting without introducing additional model claims."""
         basic = user_profile.get("basic", {})
-
-        # Extract key strengths from rewritten projects
-        key_strengths = []
-        for proj in rewritten_projects[:2]:
-            name = proj.get("project_name", "")
-            desc = proj.get("rewritten_description", "")[:100]
-            if name:
-                key_strengths.append(f"{name}: {desc}")
-
-        prompt = GREETING_PROMPT.format(
-            degree=basic.get("degree", ""),
-            school=basic.get("school", ""),
-            key_strengths="\n".join(key_strengths) if key_strengths else "Relevant project experience",
-            company_name=job_info.get("company_name", ""),
-            job_title=job_info.get("job_title", ""),
-        )
-
-        messages = [
-            {"role": "system", "content": "You are a helpful career assistant."},
-            {"role": "user", "content": prompt},
+        company_name = job_info.get("company_name") or "贵公司"
+        job_title = job_info.get("job_title") or "目标岗位"
+        major = basic.get("major")
+        project_names = [
+            project.get("project_name")
+            for project in rewritten_projects[:2]
+            if project.get("project_name")
         ]
-
-        try:
-            return await llm_gateway.chat(messages, provider="zhipu", temperature=0.5)
-        except Exception as e:
-            logger.error(f"[ResumeGen] Greeting failed: {e}")
-            return (
-                f"Hello! I'm interested in the {job_info.get('job_title', '')} position "
-                f"at {job_info.get('company_name', 'your company')}. "
-                f"My background in {basic.get('major', 'computer science')} and "
-                f"relevant project experience make me a strong fit. "
-                f"Looking forward to discussing further!"
-            )
+        evidence = ""
+        if project_names:
+            evidence = f"我在画像中记录了{'、'.join(project_names)}等项目经历。"
+        elif major:
+            evidence = f"我的专业背景是{major}。"
+        return (
+            f"您好，我希望应聘{company_name}的{job_title}。"
+            f"{evidence}简历内容均基于已保存的真实资料，期待进一步沟通，谢谢。"
+        )
 
     # ─── Utils ──────────────────────────────────────────────────────
 
@@ -667,6 +899,40 @@ class ResumeGeneratorAgent:
             text = text[:-3]
         return text.strip()
 
+    @staticmethod
+    def _find_ungrounded_numbers(user_profile: dict, resume_text: str) -> list[dict]:
+        """Reject resume numbers that cannot be traced to the persisted profile."""
+        ignored_keys = {
+            "id", "user_id", "profile_id", "completeness",
+            "created_at", "updated_at", "is_active",
+        }
+
+        def facts_only(value):
+            if isinstance(value, dict):
+                return {
+                    key: facts_only(item)
+                    for key, item in value.items()
+                    if key not in ignored_keys
+                }
+            if isinstance(value, list):
+                return [facts_only(item) for item in value]
+            return value
+
+        source_text = json.dumps(facts_only(user_profile), ensure_ascii=False, default=str)
+        source_numbers = set(re.findall(r"\d+(?:\.\d+)?%?", source_text))
+        resume_numbers = set(re.findall(r"\d+(?:\.\d+)?%?", resume_text))
+        ungrounded = sorted(resume_numbers - source_numbers)
+        return [
+            {
+                "type": "number_fabrication",
+                "original": number,
+                "fact": "用户画像中没有该数字的原始依据",
+                "severity": "high",
+                "suggestion": "删除该数字或先在原始项目资料中补充可核验依据",
+            }
+            for number in ungrounded
+        ]
+
 
     # ─── 事实核查 ────────────────────────────────────────────────
 
@@ -688,6 +954,12 @@ class ResumeGeneratorAgent:
         projects = user_profile.get("projects", [])
 
         profile_summary = {
+            "基本信息": {
+                "姓名": basic.get("full_name"),
+                "城市": basic.get("current_city"),
+                "电话": basic.get("phone"),
+                "邮箱": basic.get("email"),
+            },
             "学历": {
                 "学校": basic.get("school"),
                 "专业": basic.get("major"),
@@ -721,6 +993,7 @@ class ResumeGeneratorAgent:
         try:
             response = await llm_gateway.chat(messages, provider="zhipu", temperature=0.1)
             result = json.loads(self._clean_json(response))
+            result["verification_status"] = "completed"
             logger.info(
                 f"[ResumeGen] Fact check: has_fabrications={result.get('has_fabrications')}, "
                 f"confidence={result.get('confidence_score')}"
@@ -729,15 +1002,16 @@ class ResumeGeneratorAgent:
         except Exception as e:
             logger.error(f"[ResumeGen] Fact check failed: {e}")
             return {
-                "has_fabrications": False,
+                "verification_status": "failed",
+                "has_fabrications": None,
                 "fabrications": [],
-                "confidence_score": 80,
+                "confidence_score": 0,
                 "summary": "事实核查未能完成，请人工审核简历内容",
             }
 
     async def safeguard_resume(
         self, user_profile: dict, resume_text: str, fact_check: dict
-    ) -> str:
+    ) -> Optional[str]:
         """
         根据事实核查结果修正简历，移除编造内容
 
@@ -763,7 +1037,7 @@ class ResumeGeneratorAgent:
             return corrected
         except Exception as e:
             logger.error(f"[ResumeGen] Safeguard failed: {e}")
-            return resume_text  # 返回原文，不做修改
+            return None
 
 
 # Global singleton

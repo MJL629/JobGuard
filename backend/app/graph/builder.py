@@ -1,228 +1,146 @@
-"""
-LangGraph Graph Builder
+"""唯一的生产 LangGraph：负责聊天请求的真实意图分类。
 
-Assembles all Agents into a coordinated workflow with state management,
-intent routing, and conditional branching.
+具体画像、岗位、简历服务由 API 层显式调用并承担数据库事务。这里不再
+声明没有实现体的“Agent 节点”，避免图结构与真实执行链不一致。
 """
 
 import logging
-from typing import Literal
+from typing import Optional
 
-from langgraph.graph import StateGraph, END
-from langgraph.checkpoint.memory import MemorySaver
+from langgraph.graph import END, StateGraph
 
-from app.agents.state import JobGuardState
 from app.agents.orchestrator import detect_intent
+from app.agents.state import JobGuardState
 
 logger = logging.getLogger(__name__)
 
 
-# ─── Node Functions ────────────────────────────────────────────────────
-
-async def router_node(state: JobGuardState) -> dict:
-    """Entry point: detect intent and route"""
+async def classify_intent_node(state: JobGuardState) -> dict:
+    """调用真实意图识别器，并在结果中留下可测试的图执行轨迹。"""
     messages = state.get("messages", [])
     if not messages:
-        return {"intent": "build_profile", "current_stage": "init"}
+        content = ""
+    else:
+        last_message = messages[-1]
+        content = last_message.content if hasattr(last_message, "content") else str(last_message.get("content", ""))
 
-    last_msg = messages[-1]
-    user_message = last_msg.content if hasattr(last_msg, "content") else str(last_msg)
-
-    intent = await detect_intent(user_message)
-    logger.info(f"[Graph] Router: intent={intent}")
-
+    intent = await detect_intent(content, state.get("session_type"))
+    logger.info("[ProductionGraph] classify_intent -> %s", intent)
     return {
         "intent": intent,
-        "current_stage": intent,
+        "current_stage": "intent_classified",
+        "graph_trace": ["classify_intent"],
     }
 
 
-async def profile_node(state: JobGuardState) -> dict:
-    """Profile building node"""
-    logger.info("[Graph] Profile node executing")
-    return {
-        "current_stage": "profile_complete",
+async def build_execution_plan_node(state: JobGuardState) -> dict:
+    """为当前意图生成确定性的业务步骤，避免模型自行越权或跳步。"""
+    plans = {
+        "build_profile": [
+            {"step": "extract_profile_evidence", "executor": "profile_service"},
+            {"step": "confirm_high_impact_constraints", "executor": "human"},
+            {"step": "persist_profile", "executor": "profile_service"},
+            {"step": "ask_next_deep_question", "executor": "profile_agent"},
+        ],
+        "analyze_job": [
+            {"step": "parse_job_input", "executor": "job_service"},
+            {"step": "search_company_evidence", "executor": "search_company_info"},
+            {"step": "evaluate_match_and_risk", "executor": "job_service"},
+        ],
+        "recommend_jobs": [
+            {"step": "load_profile", "executor": "profile_service"},
+            {"step": "search_active_jobs", "executor": "search_job_database"},
+            {"step": "score_with_explanations", "executor": "job_service"},
+        ],
+        "generate_resume": [
+            {"step": "load_grounded_profile", "executor": "profile_service"},
+            {"step": "load_target_job", "executor": "job_service"},
+            {"step": "confirm_write_action", "executor": "human"},
+            {"step": "generate_and_fact_check", "executor": "resume_service"},
+        ],
+        "career_advice": [
+            {"step": "load_profile_gaps", "executor": "inspect_profile_gaps"},
+            {"step": "select_verified_resources", "executor": "recommend_learning_resources"},
+            {"step": "compose_action_plan", "executor": "career_advisor"},
+        ],
     }
-
-
-async def job_parse_node(state: JobGuardState) -> dict:
-    """Job parsing node"""
-    logger.info("[Graph] Job parse node executing")
-    return {
-        "current_stage": "job_parsed",
-    }
-
-
-async def background_check_node(state: JobGuardState) -> dict:
-    """Background check node"""
-    logger.info("[Graph] Background check node executing")
-    return {
-        "current_stage": "background_checked",
-    }
-
-
-async def job_match_node(state: JobGuardState) -> dict:
-    """Job matching node"""
-    logger.info("[Graph] Job match node executing")
-    return {
-        "current_stage": "matched",
-    }
-
-
-async def resume_generate_node(state: JobGuardState) -> dict:
-    """Resume generation node"""
-    logger.info("[Graph] Resume generation node executing")
-    return {
-        "current_stage": "resume_generated",
-    }
-
-
-async def recommend_node(state: JobGuardState) -> dict:
-    """Job recommendation node"""
-    logger.info("[Graph] Recommendation node executing")
-    return {
-        "current_stage": "recommended",
-    }
-
-
-# ─── Routing Functions ─────────────────────────────────────────────────
-
-def route_by_intent(state: JobGuardState) -> Literal[
-    "profile", "job_parse", "resume_generate", "recommend", "fallback"
-]:
-    """Route to the appropriate node based on intent"""
     intent = state.get("intent", "build_profile")
-
-    routing = {
-        "build_profile": "profile",
-        "analyze_job": "job_parse",
-        "generate_resume": "resume_generate",
-        "recommend_jobs": "recommend",
-    }
-
-    target = routing.get(intent, "fallback")
-    logger.info(f"[Graph] Routing: {intent} -> {target}")
-    return target
-
-
-def route_after_job_parse(state: JobGuardState) -> Literal["background_check", "job_match", END]:
-    """After parsing a job, decide next step"""
-    intent = state.get("intent", "")
-    if intent == "analyze_job":
-        return "background_check"
-    elif intent == "generate_resume":
-        return "job_match"
-    return END
-
-
-def route_after_background_check(state: JobGuardState) -> Literal["job_match", END]:
-    """After background check, optionally match"""
-    return "job_match"
-
-
-# ─── Fallback ──────────────────────────────────────────────────────────
-
-async def fallback_node(state: JobGuardState) -> dict:
-    """Fallback for unrecognized intents"""
-    logger.warning(f"[Graph] Fallback: unknown intent={state.get('intent')}")
     return {
-        "current_stage": "fallback",
-        "error": f"Unknown intent: {state.get('intent')}",
+        "execution_plan": plans.get(intent, plans["build_profile"]),
+        "current_stage": "execution_planned",
+        "graph_trace": [*state.get("graph_trace", []), "build_execution_plan"],
     }
 
 
-# ─── Graph Builder ─────────────────────────────────────────────────────
+async def apply_evidence_gate_node(state: JobGuardState) -> dict:
+    """声明流程可使用的证据和人工确认边界，供 API 执行层强制遵循。"""
+    intent = state.get("intent", "build_profile")
+    policy = {
+        "require_source_links": intent == "analyze_job",
+        "allow_unverified_numbers": False,
+        "require_human_confirmation": intent == "generate_resume",
+        "persist_only_confirmed_constraints": intent == "build_profile",
+        "on_missing_evidence": "mark_unknown_and_return_verification_steps",
+    }
+    return {
+        "evidence_policy": policy,
+        "current_stage": "evidence_gate_ready",
+        "graph_trace": [*state.get("graph_trace", []), "apply_evidence_gate"],
+    }
+
 
 def build_jobguard_graph() -> StateGraph:
-    """
-    Build the JobGuard LangGraph workflow.
-
-    Graph structure:
-
-        [router] ──intent──> [profile] ────────────────> END
-                   │
-                   ├────────> [job_parse] ──> [background_check] ──> [job_match] ──> END
-                   │
-                   ├────────> [resume_generate] ─────────────────────> END
-                   │
-                   ├────────> [recommend] ───────────────────────────> END
-                   │
-                   └────────> [fallback] ────────────────────────────> END
-    """
-    # Create graph
+    """构建意图、计划和证据门禁均会真实执行的确定性主链。"""
     workflow = StateGraph(JobGuardState)
-
-    # Add nodes
-    workflow.add_node("router", router_node)
-    workflow.add_node("profile", profile_node)
-    workflow.add_node("job_parse", job_parse_node)
-    workflow.add_node("background_check", background_check_node)
-    workflow.add_node("job_match", job_match_node)
-    workflow.add_node("resume_generate", resume_generate_node)
-    workflow.add_node("recommend", recommend_node)
-    workflow.add_node("fallback", fallback_node)
-
-    # Set entry point
-    workflow.set_entry_point("router")
-
-    # Router -> conditional edges
-    workflow.add_conditional_edges(
-        "router",
-        route_by_intent,
-        {
-            "profile": "profile",
-            "job_parse": "job_parse",
-            "resume_generate": "resume_generate",
-            "recommend": "recommend",
-            "fallback": "fallback",
-        },
-    )
-
-    # Profile -> END
-    workflow.add_edge("profile", END)
-
-    # Job parse -> conditional (background_check or match)
-    workflow.add_conditional_edges(
-        "job_parse",
-        route_after_job_parse,
-        {
-            "background_check": "background_check",
-            "job_match": "job_match",
-            END: END,
-        },
-    )
-
-    # Background check -> job_match
-    workflow.add_conditional_edges(
-        "background_check",
-        route_after_background_check,
-        {
-            "job_match": "job_match",
-            END: END,
-        },
-    )
-
-    # Job match -> END
-    workflow.add_edge("job_match", END)
-
-    # Resume generate -> END
-    workflow.add_edge("resume_generate", END)
-
-    # Recommend -> END
-    workflow.add_edge("recommend", END)
-
-    # Fallback -> END
-    workflow.add_edge("fallback", END)
-
+    workflow.add_node("classify_intent", classify_intent_node)
+    workflow.add_node("build_execution_plan", build_execution_plan_node)
+    workflow.add_node("apply_evidence_gate", apply_evidence_gate_node)
+    workflow.set_entry_point("classify_intent")
+    workflow.add_edge("classify_intent", "build_execution_plan")
+    workflow.add_edge("build_execution_plan", "apply_evidence_gate")
+    workflow.add_edge("apply_evidence_gate", END)
     return workflow
 
 
+_compiled_graph = None
+
+
+def get_jobguard_graph():
+    """懒加载编译，避免模块导入时重复构图。"""
+    global _compiled_graph
+    if _compiled_graph is None:
+        _compiled_graph = build_jobguard_graph().compile()
+        logger.info("[ProductionGraph] compiled")
+    return _compiled_graph
+
+
+async def classify_message(
+    content: str,
+    user_id: Optional[str] = None,
+    session_id: Optional[str] = None,
+    session_type: Optional[str] = None,
+) -> dict:
+    """让聊天请求经过生产图并返回意图与执行轨迹。"""
+    result = await get_jobguard_graph().ainvoke({
+        "messages": [{"role": "user", "content": content}],
+        "user_id": user_id or "",
+        "session_id": session_id or "",
+        "session_type": session_type or "general",
+        "intent": "",
+        "current_stage": "received",
+        "graph_trace": [],
+        "execution_plan": [],
+        "evidence_policy": {},
+    })
+    return {
+        "intent": result.get("intent", "build_profile"),
+        "current_stage": result.get("current_stage"),
+        "graph_trace": result.get("graph_trace", []),
+        "execution_plan": result.get("execution_plan", []),
+        "evidence_policy": result.get("evidence_policy", {}),
+    }
+
+
+# 兼容原有导入名，但不在模块加载时立即编译。
 def compile_graph():
-    """Compile the graph with memory checkpoint"""
-    workflow = build_jobguard_graph()
-    memory = MemorySaver()
-    return workflow.compile(checkpointer=memory)
-
-
-# Global compiled graph
-jobguard_graph = compile_graph()
+    return get_jobguard_graph()
