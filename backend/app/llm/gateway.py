@@ -6,9 +6,10 @@ LLM 统一调用网关
 """
 
 import base64
-import os
 import logging
-from typing import Optional, AsyncGenerator
+import time
+import uuid
+from typing import Any, Optional, AsyncGenerator
 
 from openai import AsyncOpenAI
 from app.config import settings
@@ -44,6 +45,13 @@ PROVIDERS = {
         "default_model": "BAAI/bge-m3",
         "role": "embedding",
     },
+    "vllm_local": {
+        "base_url_setting": "vllm_base_url",
+        "api_key_setting": "vllm_api_key",
+        "model_setting": "vllm_model",
+        "default_model": "",
+        "role": "local_openai_compatible",
+    },
 }
 
 
@@ -56,22 +64,42 @@ class LLMGateway:
     def __init__(self):
         self._clients: dict[str, Optional[AsyncOpenAI]] = {}
         self._mock_mode: dict[str, bool] = {}
+        self._provider_models: dict[str, str] = {}
 
         for name, config in PROVIDERS.items():
-            api_key = getattr(settings, config["api_key_env"].lower(), "")
-            if not api_key or api_key.startswith("your_"):
+            api_key_setting = config.get("api_key_setting") or config["api_key_env"].lower()
+            api_key = getattr(settings, api_key_setting, "")
+            base_url = getattr(
+                settings,
+                config.get("base_url_setting", ""),
+                config.get("base_url", ""),
+            )
+            configured_model = getattr(
+                settings,
+                config.get("model_setting", ""),
+                config.get("default_model", ""),
+            )
+            self._provider_models[name] = configured_model or config.get("default_model", "")
+
+            is_vllm_ready = name != "vllm_local" or bool(base_url and configured_model)
+            is_key_ready = bool(api_key) and not api_key.startswith("your_")
+            if not is_vllm_ready or not is_key_ready:
                 self._clients[name] = None
                 self._mock_mode[name] = True
-                logger.warning(
-                    f"[LLMGateway] Provider '{name}' 未配置 API Key，将使用 Mock 模式"
-                )
+                if name == "vllm_local":
+                    logger.info("[LLMGateway] Optional provider 'vllm_local' is disabled")
+                else:
+                    logger.warning(
+                        "[LLMGateway] Provider '%s' 未配置 API Key，将使用 Mock 模式",
+                        name,
+                    )
             else:
                 self._clients[name] = AsyncOpenAI(
                     api_key=api_key,
-                    base_url=config["base_url"],
+                    base_url=base_url,
                 )
                 self._mock_mode[name] = False
-                logger.info(f"[LLMGateway] Provider '{name}' 已就绪")
+                logger.info("[LLMGateway] Provider '%s' 已就绪", name)
 
     def _is_mock(self, provider: str) -> bool:
         return self._mock_mode.get(provider, True)
@@ -86,6 +114,7 @@ class LLMGateway:
         temperature: float = 0.7,
         max_tokens: int = 4096,
         stream: bool = False,
+        metadata: Optional[dict[str, Any]] = None,
     ) -> str | AsyncGenerator[str, None]:
         """
         统一聊天接口。
@@ -106,62 +135,200 @@ class LLMGateway:
             raise ValueError(f"未知的 Provider: {provider}")
 
         if model is None:
-            model = PROVIDERS[provider]["default_model"]
+            model = self._provider_models.get(provider) or PROVIDERS[provider]["default_model"]
+        if not model:
+            raise ValueError(f"Provider '{provider}' 未配置模型")
+
+        request_id = uuid.uuid4().hex
+        agent_name = self._agent_name(metadata)
 
         if self._is_mock(provider):
             if stream:
                 async def mock_stream():
-                    yield MOCK_RESPONSES["chat"]
+                    started = time.perf_counter()
+                    first_token_at = time.perf_counter()
+                    try:
+                        yield MOCK_RESPONSES["chat"]
+                    finally:
+                        self._record_call_safely(
+                            request_id=request_id,
+                            agent=agent_name,
+                            provider=provider,
+                            model=model,
+                            stream=True,
+                            started=started,
+                            ttft_ms=(first_token_at - started) * 1000,
+                            success=True,
+                        )
                 return mock_stream()
+            started = time.perf_counter()
+            self._record_call_safely(
+                request_id=request_id,
+                agent=agent_name,
+                provider=provider,
+                model=model,
+                stream=False,
+                started=started,
+                success=True,
+            )
             return MOCK_RESPONSES["chat"]
 
         client = self._clients[provider]
+        started = time.perf_counter()
         try:
             if stream:
-                return self._stream_chat(client, model, messages, temperature, max_tokens)
+                return self._stream_chat(
+                    client=client,
+                    model=model,
+                    messages=messages,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                    request_id=request_id,
+                    agent_name=agent_name,
+                    provider=provider,
+                )
             else:
-                import time as _time
-                _start = _time.time()
                 response = await client.chat.completions.create(
                     model=model,
                     messages=messages,
                     temperature=temperature,
                     max_tokens=max_tokens,
                 )
-                content = response.choices[0].message.content
-                _duration = (_time.time() - _start) * 1000
-                # 记录 LLM 调用指标
-                try:
-                    _tokens = response.usage.total_tokens if response.usage else max(len(content) // 2, 1)
-                except Exception:
-                    _tokens = max(len(content) // 2, 1)
-                try:
-                    from app.monitoring import metrics
-                    metrics.record_llm_call(
-                        provider=provider, model=model,
-                        tokens=_tokens, duration_ms=_duration,
-                    )
-                except Exception:
-                    pass
+                content = response.choices[0].message.content or ""
+                usage = getattr(response, "usage", None)
+                self._record_call_safely(
+                    request_id=request_id,
+                    agent=agent_name,
+                    provider=provider,
+                    model=model,
+                    stream=False,
+                    started=started,
+                    input_tokens=getattr(usage, "prompt_tokens", None),
+                    output_tokens=getattr(usage, "completion_tokens", None),
+                    success=True,
+                )
                 return content
         except Exception as e:
-            logger.error(f"[LLMGateway] chat 调用失败 (provider={provider}): {e}")
+            self._record_call_safely(
+                request_id=request_id,
+                agent=agent_name,
+                provider=provider,
+                model=model,
+                stream=stream,
+                started=started,
+                success=False,
+                error_type=type(e).__name__,
+            )
+            logger.error(
+                "[LLMGateway] chat 调用失败 (provider=%s, request_id=%s, error_type=%s)",
+                provider,
+                request_id,
+                type(e).__name__,
+            )
             raise
 
     async def _stream_chat(
-        self, client, model: str, messages: list[dict], temperature: float, max_tokens: int
+        self,
+        client,
+        model: str,
+        messages: list[dict],
+        temperature: float,
+        max_tokens: int,
+        request_id: str,
+        agent_name: Optional[str],
+        provider: str,
     ) -> AsyncGenerator[str, None]:
         """流式聊天"""
-        stream = await client.chat.completions.create(
-            model=model,
-            messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            stream=True,
-        )
-        async for chunk in stream:
-            if chunk.choices[0].delta.content:
-                yield chunk.choices[0].delta.content
+        started = time.perf_counter()
+        ttft_ms: Optional[float] = None
+        input_tokens: Optional[int] = None
+        output_tokens: Optional[int] = None
+        error_type: Optional[str] = None
+        try:
+            stream = await client.chat.completions.create(
+                model=model,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                stream=True,
+            )
+            async for chunk in stream:
+                usage = getattr(chunk, "usage", None)
+                if usage is not None:
+                    input_tokens = getattr(usage, "prompt_tokens", input_tokens)
+                    output_tokens = getattr(usage, "completion_tokens", output_tokens)
+                choices = getattr(chunk, "choices", None) or []
+                content = getattr(choices[0].delta, "content", None) if choices else None
+                if content:
+                    if ttft_ms is None:
+                        ttft_ms = (time.perf_counter() - started) * 1000
+                    yield content
+        except Exception as exc:
+            error_type = type(exc).__name__
+            logger.error(
+                "[LLMGateway] stream 调用失败 (provider=%s, request_id=%s, error_type=%s)",
+                provider,
+                request_id,
+                error_type,
+            )
+            raise
+        finally:
+            self._record_call_safely(
+                request_id=request_id,
+                agent=agent_name,
+                provider=provider,
+                model=model,
+                stream=True,
+                started=started,
+                ttft_ms=ttft_ms,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                success=error_type is None,
+                error_type=error_type,
+            )
+
+    @staticmethod
+    def _agent_name(metadata: Optional[dict[str, Any]]) -> Optional[str]:
+        """读取非敏感调用标签；metadata 本身不会被保存。"""
+        if not metadata:
+            return None
+        value = metadata.get("agent_name") or metadata.get("caller")
+        return str(value)[:100] if value is not None else None
+
+    @staticmethod
+    def _record_call_safely(
+        *,
+        request_id: str,
+        agent: Optional[str],
+        provider: str,
+        model: str,
+        stream: bool,
+        started: float,
+        ttft_ms: Optional[float] = None,
+        input_tokens: Optional[int] = None,
+        output_tokens: Optional[int] = None,
+        success: bool,
+        error_type: Optional[str] = None,
+    ) -> None:
+        """Best-effort metrics: observability must never break model calls."""
+        try:
+            from app.monitoring import metrics
+
+            metrics.record_llm_call(
+                request_id=request_id,
+                agent=agent,
+                provider=provider,
+                model=model,
+                stream=stream,
+                e2e_latency_ms=(time.perf_counter() - started) * 1000,
+                ttft_ms=ttft_ms,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                success=success,
+                error_type=error_type,
+            )
+        except Exception:
+            logger.debug("[LLMGateway] metrics recording failed", exc_info=True)
 
     # ─── Embedding ───────────────────────────────────────────────────
 
@@ -202,9 +369,12 @@ class LLMGateway:
         self,
         messages: list[dict],
         stream: bool = False,
+        metadata: Optional[dict[str, Any]] = None,
     ) -> str | AsyncGenerator[str, None]:
         """使用主力模型（智谱 GLM-4-Flash）"""
-        return await self.chat(messages, provider="zhipu", stream=stream)
+        return await self.chat(
+            messages, provider="zhipu", stream=stream, metadata=metadata
+        )
 
     async def vision(
         self,
@@ -244,20 +414,24 @@ class LLMGateway:
         self,
         messages: list[dict],
         stream: bool = False,
+        metadata: Optional[dict[str, Any]] = None,
     ) -> str | AsyncGenerator[str, None]:
         """使用推理模型（DeepSeek V3）"""
         return await self.chat(
-            messages, provider="deepseek", model="deepseek-v4-flash", temperature=0.3, stream=stream
+            messages, provider="deepseek", model="deepseek-v4-flash",
+            temperature=0.3, stream=stream, metadata=metadata,
         )
 
     async def chat_with_long_context(
         self,
         messages: list[dict],
         stream: bool = False,
+        metadata: Optional[dict[str, Any]] = None,
     ) -> str | AsyncGenerator[str, None]:
         """使用长文本模型（智谱 GLM-4-Flash 128K）"""
         return await self.chat(
-            messages, provider="zhipu", model="glm-4-flash", stream=stream
+            messages, provider="zhipu", model="glm-4-flash",
+            stream=stream, metadata=metadata,
         )
 
 

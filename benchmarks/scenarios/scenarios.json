@@ -1,0 +1,12 @@
+{
+  "job_counts": [1, 5, 10],
+  "mock_llm_delay_ms": 50,
+  "prompt_variants": 3,
+  "workflow": {
+    "message": "请推荐适合我的岗位",
+    "session_type": "profile_building",
+    "iterations": 20,
+    "expected_intent": "recommend_jobs"
+  },
+  "after_concurrency_matrix": [1, 2, 4, 8]
+}

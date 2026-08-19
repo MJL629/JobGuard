@@ -166,6 +166,38 @@ EXPERIENCE_EXTRACT_PROMPT = """从用户原话中提取一段真实求职经历�
 }}
 只输出 JSON。"""
 
+# Prefix-cache-friendly message templates.  The fixed rules/schema stay in the
+# system message; only user-owned data is formatted into the user message.
+RESUME_PARSE_SYSTEM_PROMPT = RESUME_PARSE_PROMPT.replace(
+    "\n## 简历文本\n{resume_text}\n", "\n"
+)
+RESUME_PARSE_USER_PROMPT = "## 简历文本\n{resume_text}"
+
+PROFILE_DIALOGUE_SYSTEM_PROMPT = PROFILE_DIALOGUE_SYSTEM.replace(
+    "\n## 已收集的信息\n{collected_info}\n\n## 缺失的信息\n{missing_fields}\n",
+    "\n",
+)
+PROFILE_DIALOGUE_USER_PROMPT = """## 已收集的信息
+{collected_info}
+
+## 缺失的信息
+{missing_fields}"""
+
+PROFILE_EXTRACT_SYSTEM_PROMPT = PROFILE_EXTRACT_PROMPT.replace(
+    "\n## 已有画像\n{existing_info}\n\n## 对话内容\n{dialogue}\n",
+    "\n",
+)
+PROFILE_EXTRACT_USER_PROMPT = """## 已有画像
+{existing_info}
+
+## 对话内容
+{dialogue}"""
+
+EXPERIENCE_EXTRACT_SYSTEM_PROMPT = EXPERIENCE_EXTRACT_PROMPT.replace(
+    "\n用户原话：{text}\n", "\n"
+)
+EXPERIENCE_EXTRACT_USER_PROMPT = "用户原话：{text}"
+
 
 # ─── Agent 核心类 ────────────────────────────────────────────────────────
 
@@ -239,16 +271,19 @@ class ProfileAgent:
         Returns:
             结构化的简历信息 dict
         """
-        prompt = RESUME_PARSE_PROMPT.format(resume_text=resume_text[:15000])  # 限制长度
+        prompt = RESUME_PARSE_USER_PROMPT.format(resume_text=resume_text[:15000])
 
         messages = [
-            {"role": "system", "content": "你是一个精确的 JSON 输出引擎。只输出 JSON，不输出任何解释。"},
+            {"role": "system", "content": RESUME_PARSE_SYSTEM_PROMPT},
             {"role": "user", "content": prompt},
         ]
 
         fallback = self._parse_resume_fallback(resume_text)
         try:
-            response = await llm_gateway.chat(messages, provider="zhipu", temperature=0.1)
+            response = await llm_gateway.chat(
+                messages, provider="zhipu", temperature=0.1,
+                metadata={"agent_name": "profile_agent.parse_resume"},
+            )
             if not response or response.lstrip().startswith("[Mock]"):
                 logger.warning("[ProfileAgent] 模型不可用，使用可核验的本地规则解析简历")
                 return fallback
@@ -295,19 +330,25 @@ class ProfileAgent:
         collected_str = json.dumps(collected_info, ensure_ascii=False, indent=2)
         missing_str = ", ".join(missing[:3])  # 最多提示 3 个缺失项
 
-        system_prompt = PROFILE_DIALOGUE_SYSTEM.format(
+        context_prompt = PROFILE_DIALOGUE_USER_PROMPT.format(
             collected_info=collected_str,
             missing_fields=missing_str,
         )
 
         # 构建消息（最近 10 轮对话）
-        messages = [{"role": "system", "content": system_prompt}]
+        messages = [
+            {"role": "system", "content": PROFILE_DIALOGUE_SYSTEM_PROMPT},
+            {"role": "user", "content": context_prompt},
+        ]
         recent_history = conversation_history[-20:]  # 最近 10 轮
         for msg in recent_history:
             messages.append(msg)
 
         try:
-            response = await llm_gateway.chat(messages, provider="zhipu", temperature=0.7)
+            response = await llm_gateway.chat(
+                messages, provider="zhipu", temperature=0.7,
+                metadata={"agent_name": "profile_agent.dialogue"},
+            )
             if not response or response.lstrip().startswith("[Mock]"):
                 return self._fallback_question(missing)
             return response.strip()
@@ -345,18 +386,21 @@ class ProfileAgent:
         )
         rule_updates = self._extract_rule_based_updates(latest_user_message)
 
-        prompt = PROFILE_EXTRACT_PROMPT.format(
+        prompt = PROFILE_EXTRACT_USER_PROMPT.format(
             dialogue=dialogue_text,
             existing_info=json.dumps(existing_info or {}, ensure_ascii=False, indent=2),
         )
 
         messages = [
-            {"role": "system", "content": "你是一个精确的 JSON 输出引擎。只输出 JSON。"},
+            {"role": "system", "content": PROFILE_EXTRACT_SYSTEM_PROMPT},
             {"role": "user", "content": prompt},
         ]
 
         try:
-            response = await llm_gateway.chat(messages, provider="zhipu", temperature=0.1)
+            response = await llm_gateway.chat(
+                messages, provider="zhipu", temperature=0.1,
+                metadata={"agent_name": "profile_agent.extract_updates"},
+            )
             if not response or response.lstrip().startswith("[Mock]"):
                 logger.warning("[ProfileAgent] LLM 处于 Mock 模式，跳过画像字段提取")
                 return rule_updates
@@ -395,15 +439,16 @@ class ProfileAgent:
             text,
         ):
             return None
-        prompt = EXPERIENCE_EXTRACT_PROMPT.format(text=text[:3000])
+        prompt = EXPERIENCE_EXTRACT_USER_PROMPT.format(text=text[:3000])
         try:
             response = await llm_gateway.chat(
                 [
-                    {"role": "system", "content": "你是严格的事实抽取器，只输出 JSON。"},
+                    {"role": "system", "content": EXPERIENCE_EXTRACT_SYSTEM_PROMPT},
                     {"role": "user", "content": prompt},
                 ],
                 provider="zhipu",
                 temperature=0.1,
+                metadata={"agent_name": "profile_agent.extract_experience"},
             )
             if not response or response.lstrip().startswith("[Mock]"):
                 return self._fallback_experience(text)

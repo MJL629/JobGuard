@@ -1,0 +1,27 @@
+{
+  "phase": "after",
+  "benchmark_mode": "mock",
+  "scenario": {
+    "message": "请推荐适合我的岗位",
+    "session_type": "profile_building",
+    "iterations": 20,
+    "expected_intent": "recommend_jobs"
+  },
+  "workflow_e2e_latency_ms": {
+    "mean": 4.503,
+    "min": 2.185,
+    "p95": 3.971,
+    "max": 35.215
+  },
+  "llm_call_count": 0,
+  "tool_call_count": 0,
+  "graph_node_execution_count_per_run": 3,
+  "graph_trace": [
+    "classify_intent",
+    "build_execution_plan",
+    "apply_evidence_gate"
+  ],
+  "success_count": 20,
+  "failure_count": 0,
+  "note": "The fixed scenario is resolved by existing rule-based intent routing; no LLM/tool call is expected."
+}

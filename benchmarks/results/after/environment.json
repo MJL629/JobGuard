@@ -1,0 +1,37 @@
+{
+  "phase": "after",
+  "git_commit": "b79ca6ca76f75809514ef0b3de5c27cb4c636fcd",
+  "git_commit_summary": "b79ca6c feat: complete JobGuard agent workflow",
+  "python_version": "3.11.9",
+  "platform": "Windows-10-10.0.26200-SP0",
+  "benchmark_mode": "mock",
+  "llm_provider": "benchmark_fake",
+  "llm_model": "deterministic-sleep-fake",
+  "executed_at": "2026-08-19T08:58:34.662605+00:00",
+  "test_config": {
+    "job_counts": [
+      1,
+      5,
+      10
+    ],
+    "mock_llm_delay_ms": 50,
+    "prompt_variants": 3,
+    "workflow": {
+      "message": "请推荐适合我的岗位",
+      "session_type": "profile_building",
+      "iterations": 20,
+      "expected_intent": "recommend_jobs"
+    },
+    "after_concurrency_matrix": [
+      1,
+      2,
+      4,
+      8
+    ]
+  },
+  "privacy": {
+    "uses_real_resume": false,
+    "reads_api_keys": false,
+    "calls_external_llm": false
+  }
+}

@@ -215,6 +215,30 @@ REPORT_GENERATION_PROMPT = """你是一位贴心的求职顾问。请将以下�
 
 直接输出报告内容，不需要 JSON。"""
 
+RISK_ASSESSMENT_SYSTEM_PROMPT = RISK_ASSESSMENT_PROMPT.replace(
+    "\n## 岗位信息\n{job_info}\n\n## JD 分析结果\n{jd_analysis}\n\n## 企业公开信息\n{company_info}\n\n## 网络口碑\n{online_reputation}\n\n## 用户画像（用于个性化评估）\n{user_profile}\n",
+    "\n",
+)
+RISK_ASSESSMENT_USER_PROMPT = """## 岗位信息
+{job_info}
+
+## JD 分析结果
+{jd_analysis}
+
+## 企业公开信息
+{company_info}
+
+## 网络口碑
+{online_reputation}
+
+## 用户画像（用于个性化评估）
+{user_profile}"""
+
+REPORT_GENERATION_SYSTEM_PROMPT = REPORT_GENERATION_PROMPT.replace(
+    "\n## 分析结果\n{assessment_json}\n", "\n"
+)
+REPORT_GENERATION_USER_PROMPT = "## 分析结果\n{assessment_json}"
+
 
 # ─── Agent 核心类 ────────────────────────────────────────────────────────
 
@@ -841,7 +865,7 @@ class BackgroundCheckAgent:
                 "劳动强度": prefs.get("labor_intensity", "未设置"),
             }, ensure_ascii=False)
 
-        prompt = RISK_ASSESSMENT_PROMPT.format(
+        prompt = RISK_ASSESSMENT_USER_PROMPT.format(
             job_info=json.dumps(job_info, ensure_ascii=False, indent=2)[:2000],
             jd_analysis=json.dumps(jd_analysis, ensure_ascii=False, indent=2),
             company_info=company_info[:3000] if company_info else "未获取",
@@ -850,12 +874,14 @@ class BackgroundCheckAgent:
         )
 
         messages = [
-            {"role": "system", "content": "你是一位企业风险评估专家。只输出 JSON。"},
+            {"role": "system", "content": RISK_ASSESSMENT_SYSTEM_PROMPT},
             {"role": "user", "content": prompt},
         ]
 
         try:
-            response = await llm_gateway.chat_reasoning(messages)
+            response = await llm_gateway.chat_reasoning(
+                messages, metadata={"agent_name": "background_check.assess_risk"}
+            )
             return json.loads(self._clean_json(response))
         except Exception as e:
             logger.error(f"[BackgroundCheck] 风险评估失败: {e}")
@@ -875,17 +901,20 @@ class BackgroundCheckAgent:
 
     async def _generate_report(self, assessment: dict) -> str:
         """生成用户友好的分析报告"""
-        prompt = REPORT_GENERATION_PROMPT.format(
+        prompt = REPORT_GENERATION_USER_PROMPT.format(
             assessment_json=json.dumps(assessment, ensure_ascii=False, indent=2),
         )
 
         messages = [
-            {"role": "system", "content": "你是一位贴心的求职顾问，用平易近人的语言给出分析报告。"},
+            {"role": "system", "content": REPORT_GENERATION_SYSTEM_PROMPT},
             {"role": "user", "content": prompt},
         ]
 
         try:
-            return await llm_gateway.chat(messages, provider="zhipu", temperature=0.5)
+            return await llm_gateway.chat(
+                messages, provider="zhipu", temperature=0.5,
+                metadata={"agent_name": "background_check.report"},
+            )
         except Exception as e:
             logger.error(f"[BackgroundCheck] 报告生成失败: {e}")
             return self._generate_fallback_report(assessment)

@@ -84,6 +84,18 @@ security: 网络安全/内容风控/AI安全
 
 只输出：category|sub_category（如：engineering|后端开发）"""
 
+JOB_EXTRACT_SYSTEM_PROMPT = JOB_EXTRACT_PROMPT.replace(
+    "\n## 岗位信息原文\n{raw_text}\n", "\n"
+)
+JOB_EXTRACT_USER_PROMPT = "## 岗位信息原文\n{raw_text}"
+JOB_CATEGORY_SYSTEM_PROMPT = JOB_CATEGORY_CLASSIFY_PROMPT.replace(
+    "\n## 岗位信息\n- 岗位名称：{job_title}\n- 岗位描述：{jd_text}\n",
+    "\n",
+)
+JOB_CATEGORY_USER_PROMPT = """## 岗位信息
+- 岗位名称：{job_title}
+- 岗位描述：{jd_text}"""
+
 
 # ─── Agent 核心类 ────────────────────────────────────────────────────────
 
@@ -253,15 +265,18 @@ class JobParserAgent:
 
     async def _extract_job_info(self, raw_text: str) -> dict:
         """调用 LLM 提取结构化岗位信息"""
-        prompt = JOB_EXTRACT_PROMPT.format(raw_text=raw_text[:8000])  # 限制长度
+        prompt = JOB_EXTRACT_USER_PROMPT.format(raw_text=raw_text[:8000])
 
         messages = [
-            {"role": "system", "content": "你是一个精确的 JSON 输出引擎。只输出 JSON，不输出任何解释。"},
+            {"role": "system", "content": JOB_EXTRACT_SYSTEM_PROMPT},
             {"role": "user", "content": prompt},
         ]
 
         try:
-            response = await llm_gateway.chat(messages, provider="zhipu", temperature=0.1)
+            response = await llm_gateway.chat(
+                messages, provider="zhipu", temperature=0.1,
+                metadata={"agent_name": "job_parser.extract"},
+            )
             cleaned = self._clean_json(response)
             return json.loads(cleaned)
         except json.JSONDecodeError as e:
@@ -276,18 +291,21 @@ class JobParserAgent:
 
     async def _classify_job(self, job_title: str, jd_text: str) -> tuple[str, str]:
         """对岗位进行分类"""
-        prompt = JOB_CATEGORY_CLASSIFY_PROMPT.format(
+        prompt = JOB_CATEGORY_USER_PROMPT.format(
             job_title=job_title,
             jd_text=jd_text[:2000],
         )
 
         messages = [
-            {"role": "system", "content": "你是一个精确的分类器。只输出分类结果。"},
+            {"role": "system", "content": JOB_CATEGORY_SYSTEM_PROMPT},
             {"role": "user", "content": prompt},
         ]
 
         try:
-            response = await llm_gateway.chat(messages, provider="zhipu", temperature=0.1)
+            response = await llm_gateway.chat(
+                messages, provider="zhipu", temperature=0.1,
+                metadata={"agent_name": "job_parser.classify"},
+            )
             result = response.strip()
             if "|" in result:
                 parts = result.split("|")

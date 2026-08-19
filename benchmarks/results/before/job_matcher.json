@@ -1,0 +1,99 @@
+{
+  "phase": "before",
+  "benchmark_mode": "mock",
+  "note": "Mock latency measures scheduling only; it is not real model latency.",
+  "default_cases": [
+    {
+      "jobs": 1,
+      "configured_concurrency": null,
+      "observed_max_concurrency": 1,
+      "e2e_latency_ms": 64.232,
+      "avg_per_job_ms": 64.232,
+      "llm_call_count": 1,
+      "success_count": 1,
+      "failure_count": 0,
+      "returned_result_count": 1,
+      "returned_job_ids": [
+        1
+      ],
+      "returned_ids_are_valid": true,
+      "successful_result_order_correct": true,
+      "failure_injected": false,
+      "benchmark_mode": "mock",
+      "mock_llm_delay_ms": 50
+    },
+    {
+      "jobs": 5,
+      "configured_concurrency": null,
+      "observed_max_concurrency": 5,
+      "e2e_latency_ms": 51.552,
+      "avg_per_job_ms": 10.31,
+      "llm_call_count": 5,
+      "success_count": 5,
+      "failure_count": 0,
+      "returned_result_count": 5,
+      "returned_job_ids": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "returned_ids_are_valid": true,
+      "successful_result_order_correct": true,
+      "failure_injected": false,
+      "benchmark_mode": "mock",
+      "mock_llm_delay_ms": 50
+    },
+    {
+      "jobs": 10,
+      "configured_concurrency": null,
+      "observed_max_concurrency": 5,
+      "e2e_latency_ms": 109.311,
+      "avg_per_job_ms": 10.931,
+      "llm_call_count": 10,
+      "success_count": 10,
+      "failure_count": 0,
+      "returned_result_count": 10,
+      "returned_job_ids": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ],
+      "returned_ids_are_valid": true,
+      "successful_result_order_correct": true,
+      "failure_injected": false,
+      "benchmark_mode": "mock",
+      "mock_llm_delay_ms": 50
+    }
+  ],
+  "failure_isolation": {
+    "jobs": 5,
+    "configured_concurrency": null,
+    "observed_max_concurrency": 5,
+    "e2e_latency_ms": 57.925,
+    "avg_per_job_ms": 11.585,
+    "llm_call_count": 5,
+    "success_count": 4,
+    "failure_count": 1,
+    "returned_result_count": 4,
+    "returned_job_ids": [
+      1,
+      2,
+      4,
+      5
+    ],
+    "returned_ids_are_valid": true,
+    "successful_result_order_correct": true,
+    "failure_injected": true,
+    "benchmark_mode": "mock",
+    "mock_llm_delay_ms": 50
+  }
+}

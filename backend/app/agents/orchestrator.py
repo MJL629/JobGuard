@@ -7,7 +7,7 @@ import re
 
 from app.llm.gateway import llm_gateway
 
-INTENT_PROMPT = """你是 JobGuard 的调度器。根据用户的消息和当前会话判断用户意图。
+INTENT_SYSTEM_PROMPT = """你是 JobGuard 的调度器。根据用户的消息和当前会话判断用户意图。
 
 意图类型：
 - build_profile: 用户想要建立/更新个人画像（首次使用、补充信息、更新偏好、描述求职意向但没有明确说"推荐岗位"）
@@ -24,10 +24,13 @@ INTENT_PROMPT = """你是 JobGuard 的调度器。根据用户的消息和当前
 - 只有用户明确要求生成、修改、优化或定制简历时，才返回 generate_resume；仅仅说“简历里没写某段经历”是在补充画像
 - 当前会话处于 profile_building 时，用户陈述自己的经历、能力、求职偏好或限制条件，优先返回 build_profile
 
-用户消息：{user_message}
-当前会话：{session_type}
-
 请只返回意图类型（一个单词）：build_profile / analyze_job / generate_resume / recommend_jobs / career_advice。"""
+
+INTENT_USER_PROMPT = """用户消息：{user_message}
+当前会话：{session_type}"""
+
+# Backward-compatible composed template for callers outside this module.
+INTENT_PROMPT = INTENT_SYSTEM_PROMPT + "\n\n" + INTENT_USER_PROMPT
 
 
 def _rule_based_intent(user_message: str, session_type: str | None = None) -> str | None:
@@ -76,12 +79,17 @@ async def detect_intent(user_message: str, session_type: str | None = None) -> s
     if rule_intent:
         return rule_intent
     
-    prompt = INTENT_PROMPT.format(
+    prompt = INTENT_USER_PROMPT.format(
         user_message=user_message,
         session_type=session_type or 'general',
     )
-    messages = [{"role": "user", "content": prompt}]
-    result = await llm_gateway.chat_primary(messages)
+    messages = [
+        {"role": "system", "content": INTENT_SYSTEM_PROMPT},
+        {"role": "user", "content": prompt},
+    ]
+    result = await llm_gateway.chat_primary(
+        messages, metadata={"agent_name": "orchestrator"}
+    )
     result = result.strip().lower()
     
     valid_intents = {'build_profile', 'analyze_job', 'generate_resume', 'recommend_jobs', 'career_advice'}

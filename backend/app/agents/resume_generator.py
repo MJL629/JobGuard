@@ -254,6 +254,85 @@ GREETING_PROMPT = """You are helping a job seeker write a short greeting message
 
 Output only the greeting text, no JSON, no quotes."""
 
+# Stable instructions/schemas are kept in system messages. Dynamic candidate,
+# job and RAG data is formatted only into the corresponding user message.
+FACT_CHECK_SYSTEM_PROMPT = FACT_CHECK_PROMPT.replace(
+    "\n## 用户真实画像\n{user_profile}\n\n## 生成的简历内容\n{resume_text}\n",
+    "\n",
+)
+FACT_CHECK_USER_PROMPT = "## 用户真实画像\n{user_profile}\n\n## 生成的简历内容\n{resume_text}"
+
+RESUME_SAFEGUARD_SYSTEM_PROMPT = RESUME_SAFEGUARD_PROMPT.replace(
+    "\n## 原始简历\n{resume_text}\n\n## 事实核查结果\n{fact_check_result}\n",
+    "\n",
+)
+RESUME_SAFEGUARD_USER_PROMPT = "## 原始简历\n{resume_text}\n\n## 事实核查结果\n{fact_check_result}"
+
+PROJECT_SELECTION_SYSTEM_PROMPT = PROJECT_SELECTION_PROMPT.replace(
+    "\n## Target Job\n- Company: {company_name}\n- Title: {job_title}\n- Category: {job_category} / {sub_category}\n- Requirements: {requirements}\n- JD Summary: {jd_summary}\n\n## Candidate's Projects\n{projects_text}\n",
+    "\n",
+)
+PROJECT_SELECTION_USER_PROMPT = """## Target Job
+- Company: {company_name}
+- Title: {job_title}
+- Category: {job_category} / {sub_category}
+- Requirements: {requirements}
+- JD Summary: {jd_summary}
+
+## Candidate's Projects
+{projects_text}"""
+
+PROJECT_REWRITE_SYSTEM_PROMPT = PROJECT_REWRITE_PROMPT.replace(
+    "\n## Target Job\n- Title: {job_title}\n- Category: {job_category}\n- JD Requirements: {requirements}\n\n## Original Project\n- Name: {project_name}\n- Role: {role}\n- Description: {description}\n- Tech Stack: {tech_stack}\n- Highlights: {highlights}\n\n## Emphasis Angle\n{emphasis_angle}\n",
+    "\n",
+)
+PROJECT_REWRITE_USER_PROMPT = """## Target Job
+- Title: {job_title}
+- Category: {job_category}
+- JD Requirements: {requirements}
+
+## Original Project
+- Name: {project_name}
+- Role: {role}
+- Description: {description}
+- Tech Stack: {tech_stack}
+- Highlights: {highlights}
+
+## Emphasis Angle
+{emphasis_angle}"""
+
+SELF_EVALUATION_SYSTEM_PROMPT = SELF_EVALUATION_PROMPT.replace(
+    "\n## Candidate Info\n- Degree: {degree}\n- Major: {major}\n- School: {school}\n- Years of Experience: {years_of_experience}\n- Skills: {skills}\n\n## Target Job\n- Company: {company_name}\n- Title: {job_title}\n- JD Summary: {jd_summary}\n",
+    "\n",
+)
+SELF_EVALUATION_USER_PROMPT = """## Candidate Info
+- Degree: {degree}
+- Major: {major}
+- School: {school}
+- Years of Experience: {years_of_experience}
+- Skills: {skills}
+
+## Target Job
+- Company: {company_name}
+- Title: {job_title}
+- JD Summary: {jd_summary}"""
+
+RESUME_ASSEMBLY_SYSTEM_PROMPT = RESUME_ASSEMBLY_PROMPT.replace(
+    "\n## Candidate Information\n{profile_info}\n\n## Selected Projects (already rewritten)\n{selected_projects}\n\n## Self Evaluation\n{self_evaluation}\n\n## Target Job\n{job_info}\n",
+    "\n",
+)
+RESUME_ASSEMBLY_USER_PROMPT = """## Candidate Information
+{profile_info}
+
+## Selected Projects (already rewritten)
+{selected_projects}
+
+## Self Evaluation
+{self_evaluation}
+
+## Target Job
+{job_info}"""
+
 
 # ─── Agent ─────────────────────────────────────────────────────────────
 
@@ -467,7 +546,7 @@ class ResumeGeneratorAgent:
         jd_text = job_info.get("jd_raw_text", "") or job_info.get("job_description", "")
         requirements = job_info.get("requirements", [])
 
-        prompt = PROJECT_SELECTION_PROMPT.format(
+        prompt = PROJECT_SELECTION_USER_PROMPT.format(
             company_name=job_info.get("company_name", ""),
             job_title=job_info.get("job_title", ""),
             job_category=job_info.get("job_category", ""),
@@ -478,12 +557,15 @@ class ResumeGeneratorAgent:
         )
 
         messages = [
-            {"role": "system", "content": "You are a JSON output engine."},
+            {"role": "system", "content": PROJECT_SELECTION_SYSTEM_PROMPT},
             {"role": "user", "content": prompt},
         ]
 
         try:
-            response = await llm_gateway.chat(messages, provider="zhipu", temperature=0.2)
+            response = await llm_gateway.chat(
+                messages, provider="zhipu", temperature=0.2,
+                metadata={"agent_name": "resume_generator.select_projects"},
+            )
             result = json.loads(self._clean_json(response))
             selected_indices = result.get("selected_projects", [])
 
@@ -523,7 +605,7 @@ class ResumeGeneratorAgent:
         except (json.JSONDecodeError, TypeError):
             tech_stack = []
 
-        prompt = PROJECT_REWRITE_PROMPT.format(
+        prompt = PROJECT_REWRITE_USER_PROMPT.format(
             job_title=job_info.get("job_title", ""),
             job_category=job_info.get("job_category", ""),
             requirements=json.dumps(job_info.get("requirements", [])[:5], ensure_ascii=False),
@@ -536,12 +618,15 @@ class ResumeGeneratorAgent:
         )
 
         messages = [
-            {"role": "system", "content": "You are a JSON output engine."},
+            {"role": "system", "content": PROJECT_REWRITE_SYSTEM_PROMPT},
             {"role": "user", "content": prompt},
         ]
 
         try:
-            response = await llm_gateway.chat(messages, provider="zhipu", temperature=0.5)
+            response = await llm_gateway.chat(
+                messages, provider="zhipu", temperature=0.5,
+                metadata={"agent_name": "resume_generator.rewrite_project"},
+            )
             return json.loads(self._clean_json(response))
         except Exception as e:
             logger.error(f"[ResumeGen] Project rewrite failed: {e}")
@@ -564,7 +649,7 @@ class ResumeGeneratorAgent:
 
         jd_text = job_info.get("jd_raw_text", "") or job_info.get("job_description", "")
 
-        prompt = SELF_EVALUATION_PROMPT.format(
+        prompt = SELF_EVALUATION_USER_PROMPT.format(
             degree=basic.get("degree", ""),
             major=basic.get("major", ""),
             school=basic.get("school", ""),
@@ -576,12 +661,15 @@ class ResumeGeneratorAgent:
         )
 
         messages = [
-            {"role": "system", "content": "You are a professional resume writer."},
+            {"role": "system", "content": SELF_EVALUATION_SYSTEM_PROMPT},
             {"role": "user", "content": prompt},
         ]
 
         try:
-            return await llm_gateway.chat(messages, provider="zhipu", temperature=0.6)
+            return await llm_gateway.chat(
+                messages, provider="zhipu", temperature=0.6,
+                metadata={"agent_name": "resume_generator.self_evaluation"},
+            )
         except Exception as e:
             logger.error(f"[ResumeGen] Self evaluation failed: {e}")
             known_skills = "、".join(s.get("skill_name", "") for s in (skills_list or [])[:3] if s.get("skill_name"))
@@ -618,7 +706,7 @@ class ResumeGeneratorAgent:
             "education": education,
         }
 
-        prompt = RESUME_ASSEMBLY_PROMPT.format(
+        prompt = RESUME_ASSEMBLY_USER_PROMPT.format(
             profile_info=json.dumps(profile_info, ensure_ascii=False, indent=2),
             selected_projects=json.dumps(rewritten_projects, ensure_ascii=False, indent=2),
             self_evaluation=self_eval,
@@ -629,12 +717,15 @@ class ResumeGeneratorAgent:
         )
 
         messages = [
-            {"role": "system", "content": "You are a professional resume formatter. Output clean Markdown."},
+            {"role": "system", "content": RESUME_ASSEMBLY_SYSTEM_PROMPT},
             {"role": "user", "content": prompt},
         ]
 
         try:
-            return await llm_gateway.chat(messages, provider="zhipu", temperature=0.3)
+            return await llm_gateway.chat(
+                messages, provider="zhipu", temperature=0.3,
+                metadata={"agent_name": "resume_generator.assemble"},
+            )
         except Exception as e:
             logger.error(f"[ResumeGen] Assembly failed: {e}")
             return self._build_fallback_resume(user_profile, job_info, rewritten_projects, self_eval)
@@ -980,18 +1071,21 @@ class ResumeGeneratorAgent:
             "工作年限": basic.get("years_of_experience", 0),
         }
 
-        prompt = FACT_CHECK_PROMPT.format(
+        prompt = FACT_CHECK_USER_PROMPT.format(
             user_profile=json.dumps(profile_summary, ensure_ascii=False, indent=2),
             resume_text=resume_text[:5000],
         )
 
         messages = [
-            {"role": "system", "content": "你是一个严格的简历审核员。只输出 JSON。"},
+            {"role": "system", "content": FACT_CHECK_SYSTEM_PROMPT},
             {"role": "user", "content": prompt},
         ]
 
         try:
-            response = await llm_gateway.chat(messages, provider="zhipu", temperature=0.1)
+            response = await llm_gateway.chat(
+                messages, provider="zhipu", temperature=0.1,
+                metadata={"agent_name": "resume_generator.fact_check"},
+            )
             result = json.loads(self._clean_json(response))
             result["verification_status"] = "completed"
             logger.info(
@@ -1021,18 +1115,21 @@ class ResumeGeneratorAgent:
         if not fact_check.get("has_fabrications"):
             return resume_text
 
-        prompt = RESUME_SAFEGUARD_PROMPT.format(
+        prompt = RESUME_SAFEGUARD_USER_PROMPT.format(
             resume_text=resume_text,
             fact_check_result=json.dumps(fact_check, ensure_ascii=False, indent=2),
         )
 
         messages = [
-            {"role": "system", "content": "你是一位专业的简历优化师。输出修正后的 Markdown 简历。"},
+            {"role": "system", "content": RESUME_SAFEGUARD_SYSTEM_PROMPT},
             {"role": "user", "content": prompt},
         ]
 
         try:
-            corrected = await llm_gateway.chat(messages, provider="zhipu", temperature=0.3)
+            corrected = await llm_gateway.chat(
+                messages, provider="zhipu", temperature=0.3,
+                metadata={"agent_name": "resume_generator.safeguard"},
+            )
             logger.info("[ResumeGen] Resume safeguarded - fabrications removed")
             return corrected
         except Exception as e:

@@ -1,0 +1,114 @@
+{
+  "phase": "after",
+  "benchmark_mode": "mock",
+  "job_matcher": {
+    "default_cases": [
+      {
+        "jobs": 1,
+        "configured_concurrency": null,
+        "observed_max_concurrency": 1,
+        "e2e_latency_ms": 53.48,
+        "avg_per_job_ms": 53.48,
+        "llm_call_count": 1,
+        "success_count": 1,
+        "failure_count": 0,
+        "returned_result_count": 1,
+        "returned_job_ids": [
+          1
+        ],
+        "returned_ids_are_valid": true,
+        "successful_result_order_correct": true,
+        "failure_injected": false,
+        "benchmark_mode": "mock",
+        "mock_llm_delay_ms": 50
+      },
+      {
+        "jobs": 5,
+        "configured_concurrency": null,
+        "observed_max_concurrency": 4,
+        "e2e_latency_ms": 107.189,
+        "avg_per_job_ms": 21.438,
+        "llm_call_count": 5,
+        "success_count": 5,
+        "failure_count": 0,
+        "returned_result_count": 5,
+        "returned_job_ids": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "returned_ids_are_valid": true,
+        "successful_result_order_correct": true,
+        "failure_injected": false,
+        "benchmark_mode": "mock",
+        "mock_llm_delay_ms": 50
+      },
+      {
+        "jobs": 10,
+        "configured_concurrency": null,
+        "observed_max_concurrency": 4,
+        "e2e_latency_ms": 167.766,
+        "avg_per_job_ms": 16.777,
+        "llm_call_count": 10,
+        "success_count": 10,
+        "failure_count": 0,
+        "returned_result_count": 10,
+        "returned_job_ids": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ],
+        "returned_ids_are_valid": true,
+        "successful_result_order_correct": true,
+        "failure_injected": false,
+        "benchmark_mode": "mock",
+        "mock_llm_delay_ms": 50
+      }
+    ],
+    "failure_isolation": {
+      "jobs": 5,
+      "configured_concurrency": null,
+      "observed_max_concurrency": 4,
+      "e2e_latency_ms": 117.387,
+      "avg_per_job_ms": 23.477,
+      "llm_call_count": 5,
+      "success_count": 4,
+      "failure_count": 1,
+      "returned_result_count": 5,
+      "returned_job_ids": [
+        1,
+        2,
+        4,
+        5,
+        3
+      ],
+      "returned_ids_are_valid": true,
+      "successful_result_order_correct": false,
+      "failure_injected": true,
+      "benchmark_mode": "mock",
+      "mock_llm_delay_ms": 50
+    }
+  },
+  "prompt_prefix": {
+    "orchestrator": 500,
+    "profile_agent": 489,
+    "job_parser": 574,
+    "background_check": 922,
+    "job_matcher": 266,
+    "resume_generator": 200
+  },
+  "workflow": {
+    "mean_e2e_latency_ms": 4.503,
+    "success_count": 20,
+    "failure_count": 0
+  }
+}

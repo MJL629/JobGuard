@@ -1,0 +1,188 @@
+{
+  "phase": "after",
+  "tokenizer": "tiktoken/cl100k_base",
+  "tokenizer_note": "Structural proxy only; not provider-exact token counts.",
+  "claim_boundary": "This measures prefix friendliness, not real prefix-cache hit rate.",
+  "agents": [
+    {
+      "agent": "orchestrator",
+      "system_tokens": [
+        491,
+        491,
+        491
+      ],
+      "dynamic_user_context_tokens": [
+        17,
+        17,
+        19
+      ],
+      "common_prefix_tokens": 500,
+      "dynamic_starts_at_token": 500,
+      "system_prompt_stable": true,
+      "message_roles": [
+        [
+          "system",
+          "user"
+        ],
+        [
+          "system",
+          "user"
+        ],
+        [
+          "system",
+          "user"
+        ]
+      ]
+    },
+    {
+      "agent": "profile_agent",
+      "system_tokens": [
+        475,
+        475,
+        475
+      ],
+      "dynamic_user_context_tokens": [
+        20,
+        26,
+        25
+      ],
+      "common_prefix_tokens": 489,
+      "dynamic_starts_at_token": 489,
+      "system_prompt_stable": true,
+      "message_roles": [
+        [
+          "system",
+          "user"
+        ],
+        [
+          "system",
+          "user"
+        ],
+        [
+          "system",
+          "user"
+        ]
+      ]
+    },
+    {
+      "agent": "job_parser",
+      "system_tokens": [
+        557,
+        557,
+        557
+      ],
+      "dynamic_user_context_tokens": [
+        32,
+        34,
+        29
+      ],
+      "common_prefix_tokens": 574,
+      "dynamic_starts_at_token": 574,
+      "system_prompt_stable": true,
+      "message_roles": [
+        [
+          "system",
+          "user"
+        ],
+        [
+          "system",
+          "user"
+        ],
+        [
+          "system",
+          "user"
+        ]
+      ]
+    },
+    {
+      "agent": "background_check",
+      "system_tokens": [
+        905,
+        905,
+        905
+      ],
+      "dynamic_user_context_tokens": [
+        102,
+        104,
+        96
+      ],
+      "common_prefix_tokens": 922,
+      "dynamic_starts_at_token": 922,
+      "system_prompt_stable": true,
+      "message_roles": [
+        [
+          "system",
+          "user"
+        ],
+        [
+          "system",
+          "user"
+        ],
+        [
+          "system",
+          "user"
+        ]
+      ]
+    },
+    {
+      "agent": "job_matcher",
+      "system_tokens": [
+        246,
+        246,
+        246
+      ],
+      "dynamic_user_context_tokens": [
+        74,
+        79,
+        71
+      ],
+      "common_prefix_tokens": 266,
+      "dynamic_starts_at_token": 266,
+      "system_prompt_stable": true,
+      "message_roles": [
+        [
+          "system",
+          "user"
+        ],
+        [
+          "system",
+          "user"
+        ],
+        [
+          "system",
+          "user"
+        ]
+      ]
+    },
+    {
+      "agent": "resume_generator",
+      "system_tokens": [
+        187,
+        187,
+        187
+      ],
+      "dynamic_user_context_tokens": [
+        89,
+        97,
+        91
+      ],
+      "common_prefix_tokens": 200,
+      "dynamic_starts_at_token": 200,
+      "system_prompt_stable": true,
+      "message_roles": [
+        [
+          "system",
+          "user"
+        ],
+        [
+          "system",
+          "user"
+        ],
+        [
+          "system",
+          "user"
+        ]
+      ]
+    }
+  ]
+}

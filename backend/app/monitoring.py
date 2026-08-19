@@ -49,20 +49,60 @@ class MetricsCollector:
                 timestamp=time.time(),
             ))
 
-    def record_llm_call(self, provider: str, model: str, tokens: int, duration_ms: float):
-        """记录 LLM 调用"""
+    def record_llm_call(
+        self,
+        provider: str,
+        model: str,
+        tokens: int | None = None,
+        duration_ms: float | None = None,
+        *,
+        request_id: str | None = None,
+        agent: str | None = None,
+        stream: bool = False,
+        e2e_latency_ms: float | None = None,
+        ttft_ms: float | None = None,
+        input_tokens: int | None = None,
+        output_tokens: int | None = None,
+        success: bool = True,
+        error_type: str | None = None,
+    ):
+        """记录一次 LLM 调用，不保存 Prompt、简历或画像正文。
+
+        ``tokens``/``duration_ms`` 保留给旧调用方；新调用方可使用更细粒度字段。
+        Provider 未返回 usage 时 token 字段允许为 ``None``。
+        """
+        latency_ms = e2e_latency_ms if e2e_latency_ms is not None else duration_ms
+        total_tokens = tokens
+        if total_tokens is None and input_tokens is not None and output_tokens is not None:
+            total_tokens = input_tokens + output_tokens
         with self._lock:
             self._llm_call_count += 1
-            self._llm_total_tokens += tokens
+            self._llm_total_tokens += total_tokens or 0
             self._llm_calls.append({
-                "provider": provider, "model": model,
-                "tokens": tokens, "duration_ms": duration_ms,
+                "request_id": request_id,
+                "agent": agent,
+                "provider": provider,
+                "model": model,
+                "stream": stream,
+                "e2e_latency_ms": latency_ms,
+                "ttft_ms": ttft_ms,
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "tokens": total_tokens,
+                "success": success,
+                "error_type": error_type,
                 "timestamp": time.time(),
             })
             p = self._llm_by_provider[provider]
             p["calls"] += 1
-            p["tokens"] += tokens
-            p["total_duration_ms"] += duration_ms
+            p["tokens"] += total_tokens or 0
+            p["total_duration_ms"] += latency_ms or 0.0
+
+    def get_recent_llm_calls(self, limit: int = 100) -> list[dict]:
+        """返回脱敏后的最近 LLM 指标，供测试和本地性能归因使用。"""
+        safe_limit = max(0, min(limit, self._llm_calls.maxlen or limit))
+        with self._lock:
+            return list(self._llm_calls)[-safe_limit:] if safe_limit else []
 
     def record_error(self, error_type: str, path: str):
         """记录错误"""
