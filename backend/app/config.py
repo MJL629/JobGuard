@@ -47,6 +47,10 @@ class Settings(BaseSettings):
     vllm_api_key: str = "EMPTY"
     vllm_model: str = ""
 
+    # Agent 便捷入口的路由；默认保持云端兼容，可通过 .env 切换到 vllm_local。
+    llm_primary_provider: str = "zhipu"
+    llm_reasoning_provider: str = "deepseek"
+
     # 云 API 默认保持保守并发；可在基准实验中显式切换为 1/2/4/8。
     job_match_llm_concurrency: int = Field(default=4, ge=1, le=64)
 

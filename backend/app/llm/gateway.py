@@ -371,9 +371,12 @@ class LLMGateway:
         stream: bool = False,
         metadata: Optional[dict[str, Any]] = None,
     ) -> str | AsyncGenerator[str, None]:
-        """使用主力模型（智谱 GLM-4-Flash）"""
+        """使用配置的主力模型 Provider。"""
         return await self.chat(
-            messages, provider="zhipu", stream=stream, metadata=metadata
+            messages,
+            provider=settings.llm_primary_provider,
+            stream=stream,
+            metadata=metadata,
         )
 
     async def vision(
@@ -416,9 +419,11 @@ class LLMGateway:
         stream: bool = False,
         metadata: Optional[dict[str, Any]] = None,
     ) -> str | AsyncGenerator[str, None]:
-        """使用推理模型（DeepSeek V3）"""
+        """使用配置的推理模型 Provider。"""
+        provider = settings.llm_reasoning_provider
+        model = "deepseek-v4-flash" if provider == "deepseek" else None
         return await self.chat(
-            messages, provider="deepseek", model="deepseek-v4-flash",
+            messages, provider=provider, model=model,
             temperature=0.3, stream=stream, metadata=metadata,
         )
 

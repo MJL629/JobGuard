@@ -1,0 +1,58 @@
+{
+  "created_at": "2026-08-24T13:11:26.433071+00:00",
+  "base_url": "https://<autodl-custom-service>/v1",
+  "model": "qwen2.5-7b",
+  "prompt": "解释一下vLLM中的PagedAttention",
+  "requested_requests": 3,
+  "wall_time_seconds": 22.025,
+  "summary": {
+    "successful_requests": 3,
+    "ttft_ms": {
+      "mean": 325.534,
+      "min": 129.642,
+      "max": 715.637
+    },
+    "total_time_ms": {
+      "mean": 7335.596,
+      "min": 5468.771,
+      "max": 8282.204
+    },
+    "completion_tokens": {
+      "mean": 419.667,
+      "min": 320.0,
+      "max": 488.0
+    },
+    "tokens_per_second": {
+      "mean": 59.875,
+      "min": 59.813,
+      "max": 59.954
+    }
+  },
+  "results": [
+    {
+      "request": 1,
+      "ttft_ms": 715.637,
+      "total_time_ms": 8255.812,
+      "completion_tokens": 451,
+      "tokens_per_second": 59.813,
+      "output_characters": 917
+    },
+    {
+      "request": 2,
+      "ttft_ms": 131.323,
+      "total_time_ms": 5468.771,
+      "completion_tokens": 320,
+      "tokens_per_second": 59.954,
+      "output_characters": 675
+    },
+    {
+      "request": 3,
+      "ttft_ms": 129.642,
+      "total_time_ms": 8282.204,
+      "completion_tokens": 488,
+      "tokens_per_second": 59.858,
+      "output_characters": 1045
+    }
+  ],
+  "errors": []
+}

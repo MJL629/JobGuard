@@ -154,3 +154,23 @@ async def test_metrics_failure_never_breaks_mock_chat(monkeypatch):
     result = await gateway.chat([{"role": "user", "content": "hello"}])
 
     assert result == gateway_module.MOCK_RESPONSES["chat"]
+
+
+@pytest.mark.asyncio
+async def test_agent_helpers_route_to_configured_vllm(monkeypatch):
+    gateway = gateway_module.LLMGateway()
+    calls = []
+
+    async def fake_chat(messages, **kwargs):
+        calls.append(kwargs)
+        return "local response"
+
+    monkeypatch.setattr(settings, "llm_primary_provider", "vllm_local")
+    monkeypatch.setattr(settings, "llm_reasoning_provider", "vllm_local")
+    monkeypatch.setattr(gateway, "chat", fake_chat)
+
+    assert await gateway.chat_primary([{"role": "user", "content": "primary"}]) == "local response"
+    assert await gateway.chat_reasoning([{"role": "user", "content": "reasoning"}]) == "local response"
+    assert calls[0]["provider"] == "vllm_local"
+    assert calls[1]["provider"] == "vllm_local"
+    assert calls[1]["model"] is None

@@ -6,9 +6,9 @@ Python：3.11.9 / Windows
 
 ## 1. 结论与证据边界
 
-本阶段完成的是 **vLLM / OpenAI-compatible 接入准备、稳定 Prompt 前缀、受控并发和轻量 LLM 观测**，没有安装 vLLM、下载模型或连接 GPU。
+本报告前半部分记录 **vLLM / OpenAI-compatible 接入准备、稳定 Prompt 前缀、受控并发和轻量 LLM 观测**；第 9 节补充 2026-08-24 完成的真实 AutoDL GPU 部署与 Windows 端到端验证。
 
-本报告中的耗时来自固定的 50ms 确定性 Mock LLM，只用于验证调度、并发上限和失败隔离；它不是任何真实模型的吞吐或时延。Prompt token 使用 `tiktoken/cl100k_base` 作为结构代理，只能说明前缀更稳定，不能证明 vLLM Prefix Cache 已命中。真实 TTFT、tokens/s、KV cache 命中率和 GPU 利用率留待下一阶段在同一套接口上测量。
+第 1-8 节中的耗时来自固定的 50ms 确定性 Mock LLM，只用于验证调度、并发上限和失败隔离；它不是任何真实模型的吞吐或时延。Prompt token 使用 `tiktoken/cl100k_base` 作为结构代理，只能说明前缀更稳定，不能证明 vLLM Prefix Cache 已命中。真实 Serving 数据单独列在第 9 节，避免与 Mock 数据混用。
 
 原始结果：
 
@@ -21,9 +21,9 @@ Python：3.11.9 / Windows
 
 | 文件 | 修改原因 |
 |---|---|
-| `backend/app/config.py` | 新增可选 vLLM 配置与 `JOB_MATCH_LLM_CONCURRENCY`（默认 4，范围 1-64）。 |
-| `backend/.env.example` | 记录安全的 vLLM 示例配置；不包含真实服务器地址或密钥。 |
-| `backend/app/llm/gateway.py` | 增加 `vllm_local` OpenAI-compatible Provider；增加 request_id、caller、E2E、TTFT、usage、成功/错误观测。 |
+| `backend/app/config.py` | 新增可选 vLLM 配置、Agent Provider 路由与 `JOB_MATCH_LLM_CONCURRENCY`（默认 4，范围 1-64）。 |
+| `backend/.env.example` | 记录安全的 vLLM 示例配置和 `vllm_local` 路由；不包含真实服务器地址或密钥。 |
+| `backend/app/llm/gateway.py` | 增加 `vllm_local` OpenAI-compatible Provider；Agent 便捷入口可由环境变量路由；增加 request_id、caller、E2E、TTFT、usage、成功/错误观测。 |
 | `backend/app/monitoring.py` | 扩展脱敏 LLM 调用记录，同时兼容旧 `tokens/duration_ms` 调用方式。 |
 | `backend/app/agents/orchestrator.py` | 意图固定规则放 system，用户消息和会话类型放 user。 |
 | `backend/app/agents/profile_agent.py` | 简历解析、画像对话、画像增量抽取、经历抽取拆分固定规则与动态资料。 |
@@ -182,3 +182,54 @@ compileall：通过
 4. 用并发 1/2/4/8 重跑 JobMatcher，比较吞吐、P50/P95/P99、错误率和限流行为。
 5. 按 `agent` 和 `request_id` 将 LangGraph 节点耗时归因到具体 LLM 调用。
 6. 真实实验数据与本报告 Mock 数据分栏保存，避免将调度代理结果误写成模型性能。
+
+## 9. 真实 AutoDL Serving 与端到端验收（2026-08-24）
+
+### 9.1 部署规格
+
+| 项目 | 实测配置 |
+|---|---|
+| GPU | NVIDIA GeForce RTX 4090，24564 MiB |
+| 模型 | `/root/autodl-tmp/models/Qwen2.5-7B-Instruct` |
+| Serving | vLLM 0.7.3，OpenAI-compatible API |
+| 模型名 | `qwen2.5-7b` |
+| 服务端口 | 容器 6006，经 AutoDL HTTPS 自定义服务映射到 Windows |
+| 启动参数 | `--gpu-memory-utilization 0.95 --max-model-len 8192` |
+| 空闲显存占用 | 22288 / 24564 MiB（约 90.7%），GPU utilization 0% |
+| 后台运行 | `screen` 会话 `qwen7b`，Detached |
+
+RTX 4090 为 24GB 显存。使用模型默认 32768 上下文和 0.80 显存比例时，vLLM 检测到 KV Cache 只能保存约 2560 tokens 并拒绝启动；将最大上下文显式限制为 8192、显存比例调为 0.95 后成功启动。该调整保留 JobGuard 所需上下文能力，同时避免把初始化失败隐藏成网络错误。
+
+### 9.2 Windows 公网链路基准
+
+结果文件：`backend/benchmarks/vllm_rtx4090_public.json`。固定提示、温度 0.3、最大输出 1024 tokens，连续 3 次流式请求：
+
+| 指标 | Mean | Min | Max |
+|---|---:|---:|---:|
+| TTFT | 325.534ms | 129.642ms | 715.637ms |
+| 总耗时 | 7335.596ms | 5468.771ms | 8282.204ms |
+| 输出 tokens | 419.667 | 320 | 488 |
+| 生成速度 | 59.875 tok/s | 59.813 | 59.954 |
+| 成功率 | 3/3 | - | - |
+
+此前同一 Qwen2.5-7B 服务端压测记录（旧 32GB vGPU 环境）为：并发 1 时 0.51 req/s、42.64 output tok/s；并发 4 时 1.61 req/s、137.80 output tok/s；并发 8 时 2.56 req/s、211 output tok/s。不同 GPU 环境的数据不直接合并，只用于展示 vLLM 批处理随并发提升的趋势。
+
+### 9.3 云 API 指示性基线
+
+相同提示和最大输出参数下，各执行一次非流式真实请求：
+
+| Provider | 总耗时 | 输出字符 | 说明 |
+|---|---:|---:|---|
+| 本地 Qwen / vLLM | 7335.596ms（3 次均值） | 675-1045 | 公网映射，含网络耗时 |
+| Zhipu | 15965.361ms | 868 | 单次样本 |
+| DeepSeek | 11359.751ms | 1057 | 单次样本 |
+
+云端仅各 1 次，输出长度也不同，因此该表是链路级指示性基线，不宣称统计显著性。可确认的工程收益是：Agent 不再绑定云厂商 SDK/接口，推理成本从按 token 计费转换为可控的 GPU 实例时租，并可在服务端利用连续批处理提升多请求吞吐。
+
+### 9.4 真实 Agent 效果
+
+- `python scripts/test_vllm.py` 成功返回可读的 Qwen 中文回答，退出码 0，未出现 `[Mock]`。
+- `JobParserAgent.parse(...)` 使用真实中文 JD 返回公司、岗位、20K-30K 薪资、北京海淀、经验/学历、技术要求、福利和分类等结构化字段，退出码 0。
+- `Planner.create_plan(...)` 通过 `chat_primary -> vllm_local -> AutoDL Qwen` 生成 5 步计划：岗位检索、JD 要求分析、画像差距检查、定向简历和岗位推荐。
+- `LLM_PRIMARY_PROVIDER=vllm_local` 和 `LLM_REASONING_PROVIDER=vllm_local` 使现有 Agent 入口切换到本地模型；视觉模型及 Embedding Provider 保持原实现，不新增重复 vLLM Provider。
+- Windows `curl <AutoDL HTTPS>/v1/models` 与 JobGuard SDK 调用均返回 `qwen2.5-7b`，完整链路已打通。
