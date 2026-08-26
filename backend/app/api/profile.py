@@ -8,6 +8,8 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.models.base import get_db
+from app.models.user import User
+from app.api.auth import get_current_user, require_own_user
 from app.services.profile_service import profile_service
 
 logger = logging.getLogger(__name__)
@@ -26,16 +28,53 @@ class AddProjectRequest(BaseModel):
     project_url: str | None = None
 
 
+class UpdateProfileRequest(BaseModel):
+    full_name: str | None = None
+    gender: str | None = None
+    birth_year: int | None = None
+    degree: str | None = None
+    major: str | None = None
+    school: str | None = None
+    graduation_year: int | None = None
+    current_city: str | None = None
+    expected_salary_min: int | None = None
+    expected_salary_max: int | None = None
+    preferred_locations: list[str] | None = None
+    preferred_job_types: list[str] | None = None
+    preferred_sub_categories: list[str] | None = None
+    preferred_industries: list[str] | None = None
+    overtime_tolerance: str | None = None
+    weekend_preference: str | None = None
+    holiday_preference: str | None = None
+    labor_intensity: str | None = None
+    remote_work: str | None = None
+    company_scale_pref: str | None = None
+
+
 # ─── 画像查询 ─────────────────────────────────────────────────────────
 
 @router.get("/{user_id}")
-async def get_profile(user_id: int, db: Session = Depends(get_db)):
+async def get_profile(user_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """获取用户完整画像"""
+    require_own_user(user_id, current_user)
     profile = profile_service.get_full_profile(db, user_id)
     return {
         "code": 0,
         "data": profile,
     }
+
+
+@router.put("/{user_id}")
+async def update_profile(
+    user_id: int,
+    req: UpdateProfileRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """保存当前账号的画像与求职偏好。"""
+    require_own_user(user_id, current_user)
+    data = await profile_service.update_profile(db, user_id, req.model_dump(exclude_unset=True))
+    return {"code": 0, "message": "画像已保存", "data": data}
 
 
 # ─── 简历上传 ─────────────────────────────────────────────────────────
@@ -45,8 +84,10 @@ async def upload_resume(
     user_id: int,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """上传简历文件并解析"""
+    require_own_user(user_id, current_user)
     # 读取文件内容
     content = await file.read()
 

@@ -10,6 +10,8 @@ from sqlalchemy.orm import Session
 
 from app.models.base import get_db
 from app.services.resume_service import resume_service
+from app.models.user import User
+from app.api.auth import get_current_user, require_own_user
 
 router = APIRouter()
 
@@ -22,7 +24,12 @@ class GenerateResumeRequest(BaseModel):
 
 
 @router.post("/generate")
-async def generate_resume(req: GenerateResumeRequest, db: Session = Depends(get_db)):
+async def generate_resume(
+    req: GenerateResumeRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    require_own_user(req.user_id, current_user)
     result = await resume_service.generate_resume(
         db,
         user_id=req.user_id,
@@ -35,6 +42,17 @@ async def generate_resume(req: GenerateResumeRequest, db: Session = Depends(get_
         return {"code": 1, "message": result["error"]}
 
     return {"code": 0, "data": result}
+
+
+@router.get("/user/history")
+async def get_user_history(
+    user_id: int = Query(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    require_own_user(user_id, current_user)
+    items = resume_service.get_history(db, user_id)
+    return {"code": 0, "data": {"items": items}}
 
 
 @router.get("/{resume_id}")
@@ -65,9 +83,3 @@ async def download_resume(resume_id: int, db: Session = Depends(get_db)):
         resume.get("resume_markdown", ""),
         media_type="text/markdown",
     )
-
-
-@router.get("/history")
-async def get_history(user_id: int = Query(...), db: Session = Depends(get_db)):
-    items = resume_service.get_history(db, user_id)
-    return {"code": 0, "data": {"items": items}}

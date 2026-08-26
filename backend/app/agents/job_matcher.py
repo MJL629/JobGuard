@@ -6,6 +6,7 @@ Matches user profile against job database to recommend suitable positions.
 
 import json
 import logging
+import asyncio
 from typing import Optional
 
 from sqlalchemy.orm import Session
@@ -112,10 +113,9 @@ class JobMatcherAgent:
         self, user_profile: dict, jobs: list[dict], top_k: int = 10
     ) -> list[dict]:
         """Match multiple jobs and return top matches"""
-        results = []
-        for job in jobs:
+        async def match_job(job: dict) -> dict:
             match = await self.match_single(user_profile, job)
-            results.append({
+            return {
                 "job": {
                     "id": job.get("id"),
                     "company_name": job.get("company_name"),
@@ -126,7 +126,15 @@ class JobMatcherAgent:
                     "sub_category": job.get("sub_category"),
                 },
                 "match": match,
-            })
+            }
+
+        semaphore = asyncio.Semaphore(4)
+
+        async def limited(job: dict) -> dict:
+            async with semaphore:
+                return await match_job(job)
+
+        results = await asyncio.gather(*(limited(job) for job in jobs))
 
         # Sort by overall score descending
         results.sort(key=lambda x: x["match"].get("overall_score", 0), reverse=True)

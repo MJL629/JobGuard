@@ -1,66 +1,63 @@
 <template>
   <div class="resume-view">
     <div class="page-header">
-      <h2>Resume Manager</h2>
-      <el-tag v-if="!resumeData" type="info">No resume generated yet</el-tag>
-      <el-tag v-else type="success">Ready</el-tag>
+      <h2>简历管理</h2>
+      <el-tag v-if="!resumeData" type="info">尚未生成简历</el-tag>
+      <el-tag v-else type="success">简历已生成</el-tag>
     </div>
 
-    <!-- Generate Section -->
-    <div class="generate-card" v-if="!resumeData && !loading">
-      <h3>Generate Tailored Resume</h3>
-      <p>Select a job you've analyzed, and I'll generate a resume tailored to that position.</p>
-      <el-form label-width="100px" style="margin-top: 16px;">
-        <el-form-item label="Target Job">
-          <el-select v-model="selectedJobId" placeholder="Select a job" style="width: 100%">
-            <el-option label="Java Backend @ TechCorp (Demo)" :value="1" />
-            <el-option label="Frontend Dev @ WebCo (Demo)" :value="2" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="Max Projects">
-          <el-input-number v-model="maxProjects" :min="1" :max="5" />
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="generateResume" :loading="loading">
-            Generate Resume
-          </el-button>
-        </el-form-item>
-      </el-form>
-    </div>
-
-    <!-- Loading -->
-    <div v-if="loading" class="loading-card">
-      <el-icon class="is-loading" :size="32"><Loading /></el-icon>
-      <p>Generating your tailored resume...</p>
-      <p class="sub">Selecting best projects, rewriting descriptions, matching keywords...</p>
-    </div>
-
-    <!-- Resume Preview -->
-    <div v-if="resumeData" class="resume-layout">
-      <!-- Preview -->
-      <div class="preview-panel">
-        <div class="preview-header">
-          <h3>Resume Preview</h3>
-          <div class="preview-actions">
-            <el-button size="small" @click="downloadResume" :icon="Download">Download PDF</el-button>
-            <el-button size="small" type="primary" @click="resetResume">New Resume</el-button>
-          </div>
+    <div class="resume-layout">
+      <div class="main-panel">
+        <!-- Generate Section -->
+        <div class="generate-card" v-if="!resumeData && !loading">
+          <h3>生成岗位定制简历</h3>
+          <p>请选择一个已经分析过的目标岗位，系统将根据岗位要求生成定制简历。</p>
+          <el-form label-width="100px" style="margin-top: 16px;">
+            <el-form-item label="目标岗位">
+              <el-select v-model="selectedJobId" placeholder="请选择目标岗位" filterable style="width: 100%">
+                <el-option v-for="job in jobs" :key="job.id" :label="`${job.job_title}｜${job.company_name}`" :value="job.id" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="最多项目数">
+              <el-input-number v-model="maxProjects" :min="1" :max="5" />
+            </el-form-item>
+            <el-form-item>
+              <el-button type="primary" @click="generateResume" :loading="loading" :disabled="!selectedJobId">
+                生成定制简历
+              </el-button>
+            </el-form-item>
+          </el-form>
         </div>
-        <div class="resume-preview" v-html="renderedMarkdown"></div>
+
+        <!-- Loading -->
+        <div v-if="loading" class="loading-card">
+          <el-icon class="is-loading" :size="32"><Loading /></el-icon>
+          <p>正在生成岗位定制简历……</p>
+          <p class="sub">正在筛选相关项目、改写经历描述并匹配岗位关键词……</p>
+        </div>
+
+        <!-- Resume Preview -->
+        <div v-if="resumeData" class="preview-panel">
+          <div class="preview-header">
+            <h3>简历预览</h3>
+            <div class="preview-actions">
+              <el-button size="small" @click="downloadResume" :icon="Download">下载简历</el-button>
+              <el-button size="small" type="primary" @click="resetResume">重新生成</el-button>
+            </div>
+          </div>
+          <div class="resume-preview" v-html="renderedMarkdown"></div>
+        </div>
       </div>
 
-      <!-- Sidebar: Greeting + Projects -->
       <div class="sidebar-panel">
-        <!-- Greeting -->
         <div class="greeting-card" v-if="greetingText">
-          <h4>📨 Greeting Message</h4>
+          <h4>招呼语</h4>
           <div class="greeting-text">{{ greetingText }}</div>
-          <el-button size="small" type="primary" text @click="copyGreeting">Copy</el-button>
+          <el-button size="small" type="primary" text @click="copyGreeting">复制招呼语</el-button>
         </div>
 
-        <!-- Selected Projects -->
         <div class="projects-card" v-if="selectedProjects.length">
-          <h4>📂 Selected Projects</h4>
+          <h4>已选项目</h4>
           <div class="project-item" v-for="(p, i) in selectedProjects" :key="i">
             <div class="project-rank">#{{ i + 1 }}</div>
             <div class="project-info">
@@ -74,12 +71,11 @@
           </div>
         </div>
 
-        <!-- History -->
         <div class="history-card">
-          <h4>📜 History</h4>
-          <div v-if="history.length === 0" class="empty-hint">No previous resumes</div>
-          <div v-for="h in history" :key="h.id" class="history-item">
-            <span>{{ h.job_title }} @ {{ h.company_name }}</span>
+          <h4>生成记录</h4>
+          <div v-if="history.length === 0" class="empty-hint">暂无历史简历</div>
+          <div v-for="h in history" :key="h.id" class="history-item" @click="loadResumeFromHistory(h.id)">
+            <span class="history-title">{{ h.job_title }}｜{{ h.company_name }}（第 {{ h.version }} 版）</span>
             <span class="history-date">{{ formatDate(h.created_at) }}</span>
           </div>
         </div>
@@ -89,9 +85,16 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { marked } from 'marked'
+import { ElMessage } from 'element-plus'
+import { recommendJobs } from '../api/jobs'
+import { generateResume as requestResume, getResume, getResumeHistory } from '../api/resume'
+import { useUserStore } from '../stores/user'
 
+const route = useRoute()
+const userStore = useUserStore()
 const loading = ref(false)
 const selectedJobId = ref(null)
 const maxProjects = ref(3)
@@ -99,6 +102,8 @@ const resumeData = ref(null)
 const greetingText = ref('')
 const selectedProjects = ref([])
 const history = ref([])
+const jobs = ref([])
+const resumeId = ref(null)
 
 const renderedMarkdown = computed(() => {
   if (!resumeData.value) return ''
@@ -107,59 +112,27 @@ const renderedMarkdown = computed(() => {
 
 const generateResume = async () => {
   loading.value = true
-  await new Promise(r => setTimeout(r, 1500))
-
-  resumeData.value = `# Zhang San
-
-Beijing | zhangsan@email.com | 138-xxxx-xxxx
-
-## Job Target
-**Java Backend Developer**
-
-## Self Evaluation
-Computer Science graduate from Tsinghua University with hands-on experience in building scalable microservices. Proficient in Java ecosystem with proven ability to deliver high-performance backend systems handling millions of daily requests.
-
-## Education
-- **B.S. in Computer Science**, Tsinghua University, 2020-2024
-
-## Skills
-**Languages:** Java, Python, SQL | **Frameworks:** Spring Boot, MyBatis, Flask | **Infrastructure:** MySQL, Redis, Docker, Kubernetes | **Tools:** Git, Maven, Jenkins
-
-## Project Experience
-
-### E-commerce Microservice Platform
-*Backend Developer* | 2023.03 - 2023.09
-
-- Designed and implemented a microservice architecture serving 500K+ daily active users, reducing API latency by 40%
-- Built a distributed order processing system using Spring Boot and RabbitMQ, handling 10K+ orders per minute
-- Optimized MySQL queries with indexing and caching strategies, improving database response time by 60%
-
-**Tech Stack:** Java, Spring Boot, MySQL, Redis, RabbitMQ, Docker
-
-### Online Education System
-*Full Stack Developer* | 2022.09 - 2023.01
-
-- Developed a real-time collaborative learning platform supporting 1000+ concurrent users
-- Implemented WebSocket-based live chat and notification system with 99.9% uptime
-
-**Tech Stack:** Java, Spring Boot, Vue.js, WebSocket, MySQL`
-
-  greetingText.value = 'Hello! I am very interested in the Java Backend Developer position at your company. My background in Computer Science from Tsinghua University, combined with hands-on experience building scalable microservice platforms, makes me a strong fit. I would love the opportunity to discuss how I can contribute to your team.'
-
-  selectedProjects.value = [
-    { project_name: 'E-commerce Microservice Platform', relevance_score: 0.95 },
-    { project_name: 'Online Education System', relevance_score: 0.82 },
-  ]
-
-  history.value = [
-    { id: 1, job_title: 'Java Backend', company_name: 'TechCorp', created_at: '2026-07-25T10:00:00' },
-    { id: 2, job_title: 'Backend Engineer', company_name: 'DataFlow', created_at: '2026-07-24T15:30:00' },
-  ]
-
-  loading.value = false
+  try {
+    const res = await requestResume(userStore.user.id, selectedJobId.value, null, { max_projects: maxProjects.value })
+    if (res.code !== 0) throw new Error(res.message || '生成失败')
+    const data = res.data
+    resumeId.value = data.resume_id
+    resumeData.value = data.resume_markdown
+    greetingText.value = data.greeting || ''
+    selectedProjects.value = data.selected_projects || []
+    await loadHistory()
+  } catch (error) {
+    ElMessage.error(error?.response?.data?.detail || error.message || '简历生成失败')
+  } finally {
+    loading.value = false
+  }
 }
 
 const downloadResume = () => {
+  if (resumeId.value) {
+    window.open(`http://localhost:8000/api/resume/${resumeId.value}/download`, '_blank')
+    return
+  }
   const blob = new Blob([resumeData.value], { type: 'text/markdown' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -187,6 +160,46 @@ const formatDate = (d) => {
   if (!d) return ''
   return new Date(d).toLocaleDateString()
 }
+
+const loadHistory = async () => {
+  const res = await getResumeHistory(userStore.user.id)
+  history.value = res.data?.items || []
+}
+
+const loadResumeFromHistory = async (id) => {
+  try {
+    const res = await getResume(id)
+    if (res.code !== 0) throw new Error(res.message || '读取失败')
+    const data = res.data
+    resumeId.value = data.id
+    selectedJobId.value = data.job_id
+    resumeData.value = data.resume_markdown
+    greetingText.value = data.greeting_text || ''
+    selectedProjects.value = data.selected_projects || []
+  } catch (error) {
+    ElMessage.error(error?.response?.data?.detail || error.message || '历史简历读取失败')
+  }
+}
+
+onMounted(async () => {
+  try {
+    const [jobRes] = await Promise.all([
+      recommendJobs(userStore.user.id, { page: 1, page_size: 100 }),
+      loadHistory(),
+    ])
+    jobs.value = jobRes.data?.items || []
+    const queryJobId = Number(route.query.job_id)
+    if (queryJobId) {
+      selectedJobId.value = queryJobId
+      if (!jobs.value.some(job => Number(job.id) === queryJobId)) {
+        const moreJobs = await recommendJobs(userStore.user.id, { page: 1, page_size: 100, sub_category: 'agent_algo' })
+        jobs.value = [...jobs.value, ...(moreJobs.data?.items || [])]
+      }
+    }
+  } catch (error) {
+    ElMessage.error('简历页面数据加载失败')
+  }
+})
 </script>
 
 <style scoped>
@@ -207,7 +220,8 @@ const formatDate = (d) => {
 .loading-card p { margin-top: 16px; font-size: 16px; color: #303133; }
 .loading-card .sub { font-size: 13px; color: #909399; }
 
-.resume-layout { display: grid; grid-template-columns: 1fr 320px; gap: 20px; }
+.resume-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; align-items: start; }
+.main-panel { min-width: 0; }
 
 .preview-panel {
   background: #fff; border-radius: 8px; box-shadow: 0 2px 12px rgba(0,0,0,0.06);
@@ -255,9 +269,16 @@ const formatDate = (d) => {
 .project-name { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
 
 .history-item {
-  display: flex; justify-content: space-between; padding: 6px 0;
+  display: flex; flex-direction: column; gap: 4px; padding: 8px 0;
   font-size: 13px; border-bottom: 1px solid #f2f3f5;
+  cursor: pointer;
 }
+.history-item:hover { color: #409eff; }
+.history-title { line-height: 1.45; }
 .history-date { color: #909399; font-size: 12px; }
 .empty-hint { font-size: 13px; color: #c0c4cc; text-align: center; padding: 12px; }
+
+@media (max-width: 960px) {
+  .resume-layout { grid-template-columns: 1fr; }
+}
 </style>

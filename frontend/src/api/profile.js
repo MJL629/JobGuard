@@ -2,6 +2,8 @@ import api from './index'
 
 export const getProfile = (userId) => api.get(`/profile/${userId}`)
 
+export const updateProfile = (userId, data) => api.put(`/profile/${userId}`, data)
+
 export const uploadResume = (userId, file) => {
   const formData = new FormData()
   formData.append('file', file)

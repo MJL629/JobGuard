@@ -9,4 +9,4 @@ export const downloadResume = (resumeId) =>
   `http://localhost:8000/api/resume/${resumeId}/download`
 
 export const getResumeHistory = (userId) =>
-  api.get('/resume/history', { params: { user_id: userId } })
+  api.get('/resume/user/history', { params: { user_id: userId } })

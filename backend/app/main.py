@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.api import api_router
+from app.api import create_api_router
 
 
 @asynccontextmanager
@@ -45,7 +45,7 @@ app.add_middleware(
 )
 
 # 注册路由
-app.include_router(api_router, prefix="/api")
+app.include_router(create_api_router(), prefix="/api")
 
 
 @app.get("/")

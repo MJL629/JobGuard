@@ -16,12 +16,15 @@ from sqlalchemy.orm import Session
 
 from app.models.base import get_db
 from app.models.chat import ChatSession, ChatMessage
+from app.models.user import User
+from app.api.auth import get_current_user, require_own_user
 from app.agents.profile_agent import profile_agent
 from app.agents.orchestrator import detect_intent, route_by_intent
 from app.services.profile_service import profile_service
 from app.services.job_service import job_service
 from app.services.resume_service import resume_service
 from app.agents.job_matcher import job_matcher
+from app.observability.tracing import trace_recorder
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +44,12 @@ class SendMessageRequest(BaseModel):
 # ─── 会话管理 ─────────────────────────────────────────────
 
 @router.post("/session")
-async def create_session(req: CreateSessionRequest, db: Session = Depends(get_db)):
+async def create_session(
+    req: CreateSessionRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    require_own_user(req.user_id, current_user)
     session = ChatSession(
         user_id=req.user_id,
         session_type=req.session_type,
@@ -58,6 +66,37 @@ async def create_session(req: CreateSessionRequest, db: Session = Depends(get_db
     }
 
 
+@router.get("/sessions")
+async def list_sessions(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """列出当前账号的历史会话，供重新登录后恢复。"""
+    require_own_user(user_id, current_user)
+    sessions = (
+        db.query(ChatSession)
+        .filter(ChatSession.user_id == user_id)
+        .order_by(ChatSession.updated_at.desc(), ChatSession.id.desc())
+        .all()
+    )
+    result = []
+    for item in sessions:
+        first_message = (
+            db.query(ChatMessage)
+            .filter(ChatMessage.session_id == item.id, ChatMessage.role == "user")
+            .order_by(ChatMessage.created_at.asc())
+            .first()
+        )
+        result.append({
+            "session_id": item.id,
+            "session_type": item.session_type,
+            "title": (first_message.content[:24] if first_message else "新对话"),
+            "updated_at": item.updated_at.isoformat() if item.updated_at else None,
+        })
+    return {"sessions": result}
+
+
 # ─── 核心：发送消息 ────────────────────────────────────────
 
 @router.post("/{session_id}/message")
@@ -65,12 +104,15 @@ async def send_message(
     session_id: int,
     req: SendMessageRequest,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     session = db.query(ChatSession).filter(ChatSession.id == session_id).first()
     if not session:
-        raise HTTPException(status_code=404, detail="Session not found")
+        raise HTTPException(status_code=404, detail="会话不存在")
+    require_own_user(session.user_id, current_user)
 
     user_id = session.user_id
+    session_type = session.session_type
 
     user_msg = ChatMessage(
         session_id=session_id,
@@ -83,14 +125,14 @@ async def send_message(
 
     history = _get_conversation_history(db, session_id)
 
-    async def event_stream():
+    async def _event_stream_impl():
         try:
             intent = await detect_intent(req.content)
             logger.info(f"[Chat] Intent: {intent}, user_id={user_id}")
 
             yield _sse_event("intent", {
                 "intent": intent,
-                "session_type": session.session_type,
+                "session_type": session_type,
             })
 
             if intent == "build_profile":
@@ -114,14 +156,27 @@ async def send_message(
                 ):
                     yield event
             else:
+                from app.llm.gateway import llm_gateway
+                generic_message = await llm_gateway.chat_primary(
+                    [
+                        {
+                            "role": "system",
+                            "content": (
+                                "你是 JobGuard 中文求职助手。结合上下文直接回答用户，语言自然、简洁、专业。"
+                                "只讨论求职、岗位、简历、职业规划；信息不足时提出一个明确的补充问题。"
+                                "不要声称已经检索或核实没有实际调用的数据。"
+                            ),
+                        },
+                        *history[-12:],
+                    ],
+                    temperature=0.4,
+                    max_tokens=800,
+                    prompt_version="chat-general-v1",
+                )
                 yield _sse_event("message", {
-                    "content": (
-                        "Hello! I'm JobGuard. You can:\n"
-                        "- Upload your resume or tell me about your job preferences\n"
-                        "- Paste a job link for me to analyze\n"
-                        "- Ask me to recommend suitable jobs"
-                    ),
+                    "content": generic_message,
                 })
+                _save_assistant_message(db, session_id, generic_message)
 
             yield _sse_event("done", {"status": "completed"})
 
@@ -129,6 +184,13 @@ async def send_message(
             logger.error(f"[Chat] Error: {e}", exc_info=True)
             yield _sse_event("error", {"message": str(e)})
             yield _sse_event("done", {"status": "error"})
+
+    async def event_stream():
+        async with trace_recorder.trace(
+            request_id=f"chat-{session_id}", name="chat.message"
+        ):
+            async for event in _event_stream_impl():
+                yield event
 
     return StreamingResponse(
         event_stream(),
@@ -406,7 +468,15 @@ async def _handle_job_recommendation(db, user_id, session_id):
 # ─── History ───────────────────────────────────────────────
 
 @router.get("/{session_id}/history")
-async def get_history(session_id: int, db: Session = Depends(get_db)):
+async def get_history(
+    session_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    session = db.query(ChatSession).filter(ChatSession.id == session_id).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="会话不存在")
+    require_own_user(session.user_id, current_user)
     messages = (
         db.query(ChatMessage)
         .filter(ChatMessage.session_id == session_id)

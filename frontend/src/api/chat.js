@@ -29,3 +29,5 @@ export const sendMessage = (sessionId, content, messageType = 'text') => {
 export const getHistory = (sessionId) => {
   return api.get(`/chat/${sessionId}/history`)
 }
+
+export const getSessions = (userId) => api.get('/chat/sessions', { params: { user_id: userId } })

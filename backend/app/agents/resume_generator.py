@@ -133,31 +133,31 @@ RESUME_ASSEMBLY_PROMPT = """You are a professional resume formatter. Assemble a 
 
 ## Output Format
 ```markdown
-# {Full Name}
+# {{Full Name}}
 
-{Contact Info line: City | Phone | Email}
+{{Contact Info line: City | Phone | Email}}
 
 ## Job Target
-**{Job Title}**
+**{{Job Title}}**
 
 ## Self Evaluation
-{Self evaluation text}
+{{Self evaluation text}}
 
 ## Education
-{Education entries}
+{{Education entries}}
 
 ## Skills
-{Skills grouped by category}
+{{Skills grouped by category}}
 
 ## Project Experience
-### {Project Name}
-*{Role}* | {Time Period}
+### {{Project Name}}
+*{{Role}}* | {{Time Period}}
 
-{3-5 bullet points of rewritten description}
+{{3-5 bullet points of rewritten description}}
 
-**Tech Stack:** {tech tags}
+**Tech Stack:** {{tech tags}}
 
-### {Project Name 2}
+### {{Project Name 2}}
 ...
 ```
 

@@ -13,8 +13,11 @@ import logging
 from typing import Optional
 
 from app.llm.gateway import llm_gateway
+from app.observability.tracing import traced_node
 
 logger = logging.getLogger(__name__)
+JOB_EXTRACT_PROMPT_VERSION = "job_extract.v2"
+JOB_CLASSIFY_PROMPT_VERSION = "job_classify.v2"
 
 # ─── Prompt 模板 ─────────────────────────────────────────────────────────
 
@@ -28,7 +31,7 @@ JOB_EXTRACT_PROMPT = """你是一位专业的招聘信息分析专家。请从�
 
 ```json
 {{
-  "company_name": "公司全称",
+  "company_name": "公司名称（严格按原文提取，不要求工商全称，不要自行补全）",
   "job_title": "岗位名称",
   "salary_min": 最低月薪（整数，单位：元）,
   "salary_max": 最高月薪（整数，单位：元）,
@@ -59,25 +62,20 @@ JOB_EXTRACT_PROMPT = """你是一位专业的招聘信息分析专家。请从�
 只输出 JSON，不要任何其他内容。"""
 
 
-JOB_CATEGORY_CLASSIFY_PROMPT = """根据以下岗位信息，判断岗位分类。
+JOB_CATEGORY_CLASSIFY_PROMPT = """你是岗位分类器。只能从给定枚举中各选择一个 category 和 sub_category。
+先依据岗位的主要职责判断，不要因偶然出现的技术关键词改变岗位类别；细分类必须属于所选类别。无法完全确定时选择最接近主要职责的一项。
 
-## 岗位信息
-- 岗位名称：{job_title}
-- 岗位描述：{jd_text}
-
-## 分类选项
-1. engineering - 工程开发（前端/后端/全栈/客户端/运维/AI Infra）
-2. algorithm - 算法研发（大模型/Agent/推荐/CV/语音/NLP）
-3. product_data_testing - 产品/数据/测试（AI产品/数据开发/数据分析/测试）
-4. security - 安全（网络/内容/风控/AI安全）
-
-## 细分选项
+## 允许值
 engineering: 前端开发/后端开发/全栈开发/客户端开发/运维开发/AI Infra
 algorithm: 大模型算法/Agent算法/推荐算法/CV算法/语音算法/NLP算法
 product_data_testing: AI产品经理/数据开发/数据分析/测试开发
 security: 网络安全/内容风控/AI安全
 
-只输出：category|sub_category（如：engineering|后端开发）"""
+## 岗位信息
+- 岗位名称：{job_title}
+- 岗位描述：{jd_text}
+
+只输出一行 category|sub_category，不要解释，不要 Markdown。"""
 
 
 # ─── Agent 核心类 ────────────────────────────────────────────────────────
@@ -87,6 +85,7 @@ class JobParserAgent:
 
     # ─── 主入口：解析岗位 ─────────────────────────────────────────────
 
+    @traced_node("job_parser.parse")
     async def parse(
         self,
         raw_input: str,
@@ -138,7 +137,13 @@ class JobParserAgent:
         ]
 
         try:
-            response = await llm_gateway.chat_primary(messages, temperature=0.1)
+            response = await llm_gateway.chat_primary(
+                messages,
+                temperature=0.1,
+                max_tokens=1200,
+                prompt_version=JOB_EXTRACT_PROMPT_VERSION,
+                use_cache=True,
+            )
             cleaned = self._clean_json(response)
             return json.loads(cleaned)
         except json.JSONDecodeError as e:
@@ -164,7 +169,13 @@ class JobParserAgent:
         ]
 
         try:
-            response = await llm_gateway.chat_primary(messages, temperature=0.1)
+            response = await llm_gateway.chat_primary(
+                messages,
+                temperature=0.1,
+                max_tokens=64,
+                prompt_version=JOB_CLASSIFY_PROMPT_VERSION,
+                use_cache=True,
+            )
             result = response.strip()
             if "|" in result:
                 parts = result.split("|")

@@ -6,6 +6,10 @@
         {{ backendStatus === 'connected' ? '已连接' : '未连接后端' }}
       </el-tag>
       <el-tag v-if="sessionId" type="info" size="small">会话 #{{ sessionId }}</el-tag>
+      <el-select v-if="sessions.length" v-model="sessionId" size="small" style="width: 190px" @change="loadHistory">
+        <el-option v-for="item in sessions" :key="item.session_id" :label="item.title" :value="item.session_id" />
+      </el-select>
+      <el-button size="small" @click="startNewSession">新建对话</el-button>
     </div>
 
     <div class="chat-messages" ref="messagesContainer">
@@ -87,7 +91,8 @@
 
 <script setup>
 import { ref, nextTick, onMounted } from 'vue'
-import { createSession, sendMessage as sendChatMessage } from '../api/chat'
+import { createSession, sendMessage as sendChatMessage, getHistory, getSessions } from '../api/chat'
+import { useUserStore } from '../stores/user'
 
 const inputText = ref('')
 const loading = ref(false)
@@ -95,18 +100,45 @@ const messages = ref([])
 const messagesContainer = ref(null)
 const sessionId = ref(null)
 const backendStatus = ref('disconnected')
+const sessions = ref([])
+const userStore = useUserStore()
 
-// 初始化：创建会话
 onMounted(async () => {
   try {
-    const res = await createSession(1, 'general')  // 默认用户 ID=1
-    sessionId.value = res.session_id
+    const res = await getSessions(userStore.user.id)
+    sessions.value = res.sessions || []
+    if (sessions.value.length) {
+      sessionId.value = sessions.value[0].session_id
+      await loadHistory()
+    } else {
+      await startNewSession()
+    }
     backendStatus.value = 'connected'
   } catch (e) {
-    console.warn('后端未连接，使用本地 Mock 模式:', e.message)
+    console.warn('后端未连接:', e.message)
     backendStatus.value = 'disconnected'
   }
 })
+
+const loadHistory = async () => {
+  if (!sessionId.value) return
+  const res = await getHistory(sessionId.value)
+  messages.value = (res.messages || []).map(msg => ({
+    role: msg.role,
+    content: msg.content,
+    time: msg.created_at ? new Date(msg.created_at).toLocaleTimeString() : '',
+  }))
+  await nextTick()
+  scrollToBottom()
+}
+
+const startNewSession = async () => {
+  const res = await createSession(userStore.user.id, 'general')
+  sessionId.value = res.session_id
+  messages.value = []
+  sessions.value.unshift({ session_id: res.session_id, title: '新对话' })
+  backendStatus.value = 'connected'
+}
 
 const sendMessage = async () => {
   const text = inputText.value.trim()
@@ -143,28 +175,24 @@ const sendViaSSE = async (text) => {
     const reader = response.body.getReader()
     const decoder = new TextDecoder()
     let buffer = ''
-    let assistantContent = ''
+    let currentEvent = ''
 
     while (true) {
       const { done, value } = await reader.read()
       if (done) break
 
       buffer += decoder.decode(value, { stream: true })
-      const lines = buffer.split('\n')
-      buffer = lines.pop() || ''
+      const blocks = buffer.split('\n\n')
+      buffer = blocks.pop() || ''
 
-      for (const line of lines) {
-        if (line.startsWith('event: ')) {
-          const eventType = line.slice(7).trim()
-          continue
-        }
-        if (line.startsWith('data: ')) {
+      for (const block of blocks) {
+        const lines = block.split('\n')
+        currentEvent = lines.find(line => line.startsWith('event: '))?.slice(7).trim() || ''
+        const dataLine = lines.find(line => line.startsWith('data: '))
+        if (dataLine) {
           try {
-            const data = JSON.parse(line.slice(6))
-            handleSSEEvent(data)
-            if (data.content) {
-              assistantContent = data.content
-            }
+            const data = JSON.parse(dataLine.slice(6))
+            handleSSEEvent(currentEvent, data)
           } catch (e) {
             // 非 JSON 数据，跳过
           }
@@ -173,13 +201,8 @@ const sendViaSSE = async (text) => {
     }
 
     loading.value = false
-    if (assistantContent) {
-      messages.value.push({
-        role: 'assistant',
-        content: assistantContent,
-        time: new Date().toLocaleTimeString(),
-      })
-    }
+    const selected = sessions.value.find(item => item.session_id === sessionId.value)
+    if (selected && selected.title === '新对话') selected.title = text.slice(0, 24)
   } catch (e) {
     console.error('SSE 请求失败:', e)
     loading.value = false
@@ -187,7 +210,16 @@ const sendViaSSE = async (text) => {
   }
 }
 
-const handleSSEEvent = (data) => {
+const handleSSEEvent = (eventType, data) => {
+  if (eventType === 'message' && data.content) {
+    messages.value.push({ role: 'assistant', content: data.content, time: new Date().toLocaleTimeString() })
+    nextTick(scrollToBottom)
+    return
+  }
+  if (eventType === 'error') {
+    messages.value.push({ role: 'assistant', content: `处理失败：${data.message || '未知错误'}`, time: new Date().toLocaleTimeString() })
+    return
+  }
   // 处理不同 SSE 事件类型
   switch (true) {
     case !!data.stage:
@@ -198,12 +230,7 @@ const handleSSEEvent = (data) => {
       break
     case !!data.summary:
       // 简历解析事件
-      messages.value.push({
-        role: 'assistant',
-        content: `📄 简历解析完成！\n${data.summary}`,
-        time: new Date().toLocaleTimeString(),
-        meta: { completeness: data.completeness },
-      })
+      // 最终回复由 message 事件统一展示，避免重复消息。
       break
   }
 }
@@ -219,11 +246,11 @@ const sendMockResponse = (text) => {
 
     let response
     if (isResume) {
-      response = '📄 检测到你可能上传了简历内容。\n\n在后端 Mock 模式下，简历解析功能需要真实 LLM API。请确认后端已配置 API Key 并重启服务。\n\n当前你可以在以下页面手动完善画像：左侧导航 → 「我的画像」'
+      response = '📄 检测到你可能上传了简历内容。\n\n当前处于后端模拟模式，简历解析功能需要配置真实的大模型接口密钥。\n\n你可以先在以下页面手动完善画像：左侧导航 →「我的画像」。'
     } else if (text.includes('岗位') || text.includes('链接') || text.includes('zhipin')) {
-      response = '🔧 岗位分析功能需要真实 LLM API。请确认后端已配置 API Key。'
+      response = '🔧 岗位分析功能需要配置真实的大模型接口密钥，请检查后端配置。'
     } else {
-      response = '你好！请先告诉我你的求职需求，比如：\n• 你想找什么方向的岗位？（后端/前端/算法等）\n• 期望在哪个城市工作？\n• 期望薪资范围是多少？\n\n（当前为 Mock 模式，后端 API Key 配置后将启用智能对话）'
+      response = '你好！请先告诉我你的求职需求，比如：\n• 你想找什么方向的岗位？（后端、前端、算法等）\n• 期望在哪个城市工作？\n• 期望薪资范围是多少？\n\n（当前为模拟模式，配置后端大模型接口密钥后将启用智能对话）'
     }
 
     messages.value.push({

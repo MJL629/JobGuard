@@ -12,6 +12,7 @@
 
 import json
 import logging
+import asyncio
 from typing import Optional
 
 from app.llm.gateway import llm_gateway
@@ -233,8 +234,10 @@ class BackgroundCheckAgent:
         if web_search_func:
             try:
                 # 并行检索
-                company_info = await self._search_company_info(company_name, web_search_func)
-                online_reputation = await self._search_reputation(company_name, web_search_func)
+                company_info, online_reputation = await asyncio.gather(
+                    self._search_company_info(company_name, web_search_func),
+                    self._search_reputation(company_name, web_search_func),
+                )
             except Exception as e:
                 logger.warning(f"[BackgroundCheck] WebSearch 检索失败: {e}")
 

@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 
 export const useUserStore = defineStore('user', () => {
-  const user = ref(null)
+  const user = ref(JSON.parse(localStorage.getItem('user') || 'null'))
   const token = ref(localStorage.getItem('token') || '')
   const profile = ref(null)
 
@@ -13,11 +13,17 @@ export const useUserStore = defineStore('user', () => {
     localStorage.setItem('token', newToken)
   }
 
+  const setUser = (newUser) => {
+    user.value = newUser
+    localStorage.setItem('user', JSON.stringify(newUser))
+  }
+
   const logout = () => {
     token.value = ''
     user.value = null
     profile.value = null
     localStorage.removeItem('token')
+    localStorage.removeItem('user')
   }
 
   return {
@@ -26,6 +32,7 @@ export const useUserStore = defineStore('user', () => {
     profile,
     isLoggedIn,
     setToken,
+    setUser,
     logout,
   }
 })

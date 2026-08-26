@@ -32,8 +32,16 @@
           <el-icon><User /></el-icon>
           <span>我的画像</span>
         </el-menu-item>
+        <el-menu-item index="/traces">
+          <el-icon><DataAnalysis /></el-icon>
+          <span>Agent运行记录</span>
+        </el-menu-item>
       </el-menu>
       <div class="sidebar-footer">
+        <el-button class="logout-button" text @click="handleLogout">
+          <el-icon><SwitchButton /></el-icon>
+          退出登录
+        </el-button>
         <span class="version">v0.1.0</span>
       </div>
     </aside>
@@ -47,12 +55,20 @@
 
 <script setup>
 import { computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import { useUserStore } from './stores/user'
 
 const route = useRoute()
+const router = useRouter()
+const userStore = useUserStore()
 
 const isLoginPage = computed(() => route.name === 'Login')
 const activeMenu = computed(() => route.path)
+
+const handleLogout = () => {
+  userStore.logout()
+  router.replace('/login')
+}
 </script>
 
 <style scoped>
@@ -107,7 +123,18 @@ const activeMenu = computed(() => route.path)
 .sidebar-footer {
   padding: 16px 20px;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
+
+.logout-button {
+  color: rgba(255, 255, 255, 0.72);
+  padding: 0;
+}
+
+.logout-button:hover { color: #fff; }
 
 .version {
   font-size: 12px;

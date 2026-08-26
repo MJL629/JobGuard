@@ -7,12 +7,16 @@ LLM 统一调用网关
 
 import os
 import logging
+import time
 from typing import Optional, AsyncGenerator
 
 from openai import AsyncOpenAI
 from app.config import settings
+from app.observability.tracing import trace_recorder
+from app.llm.optimization import TTLResponseCache, choose_provider, compact_messages
 
 logger = logging.getLogger(__name__)
+response_cache = TTLResponseCache()
 
 # ─── Mock 响应（骨架阶段用）─────────────────────────────────────────────
 
@@ -32,9 +36,9 @@ PROVIDERS = {
         "role": "primary",
     },
     "deepseek": {
-        "base_url": "https://api.deepseek.com/v1",
+        "base_url": "https://api.deepseek.com",
         "api_key_env": "DEEPSEEK_API_KEY",
-        "default_model": "deepseek-v4-flash",
+        "default_model": "deepseek-chat",
         "role": "reasoning",
     },
     "siliconflow": {
@@ -42,6 +46,13 @@ PROVIDERS = {
         "api_key_env": "SILICONFLOW_API_KEY",
         "default_model": "BAAI/bge-m3",
         "role": "embedding",
+    },
+    "vllm": {
+        "base_url_setting": "vllm_base_url",
+        "api_key_env": "VLLM_API_KEY",
+        "default_model_setting": "vllm_model",
+        "role": "local",
+        "api_key_optional": True,
     },
 }
 
@@ -58,16 +69,21 @@ class LLMGateway:
 
         for name, config in PROVIDERS.items():
             api_key = getattr(settings, config["api_key_env"].lower(), "")
-            if not api_key or api_key.startswith("your_"):
+            if (not api_key or api_key.startswith("your_")) and not config.get("api_key_optional"):
                 self._clients[name] = None
                 self._mock_mode[name] = True
                 logger.warning(
                     f"[LLMGateway] Provider '{name}' 未配置 API Key，将使用 Mock 模式"
                 )
             else:
+                base_url = (
+                    getattr(settings, config["base_url_setting"])
+                    if "base_url_setting" in config
+                    else config["base_url"]
+                )
                 self._clients[name] = AsyncOpenAI(
-                    api_key=api_key,
-                    base_url=config["base_url"],
+                    api_key=api_key or "local-vllm",
+                    base_url=base_url,
                 )
                 self._mock_mode[name] = False
                 logger.info(f"[LLMGateway] Provider '{name}' 已就绪")
@@ -85,6 +101,10 @@ class LLMGateway:
         temperature: float = 0.7,
         max_tokens: int = 4096,
         stream: bool = False,
+        prompt_version: str = "unversioned",
+        use_cache: bool = False,
+        cache_ttl_seconds: float = 3600,
+        context_max_chars: int = 16_000,
     ) -> str | AsyncGenerator[str, None]:
         """
         统一聊天接口。
@@ -101,11 +121,38 @@ class LLMGateway:
             str: 非流式时返回完整响应
             AsyncGenerator[str]: 流式时返回逐 token 生成器
         """
+        provider = {"vllm_local": "vllm"}.get(provider, provider)
         if provider not in PROVIDERS:
             raise ValueError(f"未知的 Provider: {provider}")
 
         if model is None:
-            model = PROVIDERS[provider]["default_model"]
+            config = PROVIDERS[provider]
+            model = (
+                getattr(settings, config["default_model_setting"])
+                if "default_model_setting" in config
+                else config["default_model"]
+            )
+
+        messages = compact_messages(messages, max_chars=context_max_chars)
+        cache_key = response_cache.key({
+            "provider": provider,
+            "model": model,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+            "prompt_version": prompt_version,
+        })
+        if use_cache and not stream:
+            cached = await response_cache.get(cache_key)
+            if cached is not None:
+                await trace_recorder.emit({
+                    "event": "llm_cache",
+                    "status": "hit",
+                    "provider": provider,
+                    "model": model,
+                    "prompt_version": prompt_version,
+                })
+                return cached
 
         if self._is_mock(provider):
             if stream:
@@ -115,17 +162,36 @@ class LLMGateway:
             return MOCK_RESPONSES["chat"]
 
         client = self._clients[provider]
+        started = time.perf_counter()
         try:
             if stream:
                 return self._stream_chat(client, model, messages, temperature, max_tokens)
             else:
-                response = await client.chat.completions.create(
-                    model=model,
-                    messages=messages,
-                    temperature=temperature,
-                    max_tokens=max_tokens,
-                )
-                return response.choices[0].message.content
+                async with trace_recorder.span(
+                    name="llm.chat", kind="llm", provider=provider, model=model
+                ):
+                    response = await client.chat.completions.create(
+                        model=model,
+                        messages=messages,
+                        temperature=temperature,
+                        max_tokens=max_tokens,
+                    )
+                    usage = response.usage
+                    await trace_recorder.emit({
+                        "event": "llm_usage",
+                        "provider": provider,
+                        "model": model,
+                        "prompt_tokens": getattr(usage, "prompt_tokens", None),
+                        "completion_tokens": getattr(usage, "completion_tokens", None),
+                        "total_tokens": getattr(usage, "total_tokens", None),
+                        "latency_ms": round((time.perf_counter() - started) * 1000, 3),
+                        "prompt_version": prompt_version,
+                        "cache_status": "miss" if use_cache else "disabled",
+                    })
+                content = response.choices[0].message.content
+                if use_cache:
+                    await response_cache.set(cache_key, content, cache_ttl_seconds)
+                return content
         except Exception as e:
             logger.error(f"[LLMGateway] chat 调用失败 (provider={provider}): {e}")
             raise
@@ -184,18 +250,71 @@ class LLMGateway:
         self,
         messages: list[dict],
         stream: bool = False,
+        temperature: float = 0.7,
+        max_tokens: int = 4096,
+        prompt_version: str = "unversioned",
+        use_cache: bool = False,
     ) -> str | AsyncGenerator[str, None]:
         """使用主力模型（智谱 GLM-4-Flash）"""
-        return await self.chat(messages, provider="zhipu", stream=stream)
+        provider = settings.llm_primary_provider
+        # 旧环境中的 vllm_local 并不是已注册的 provider；本机答辩不启动
+        # vLLM 时优先使用已配置的云模型，避免连接本地 6006 端口后无回复。
+        if provider == "vllm_local":
+            provider = "deepseek" if not self._is_mock("deepseek") else "zhipu"
+        return await self.chat(
+            messages,
+            provider=provider,
+            stream=stream,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            prompt_version=prompt_version,
+            use_cache=use_cache,
+        )
+
+    async def chat_routed(
+        self,
+        messages: list[dict],
+        *,
+        task_type: str = "general",
+        prompt_version: str = "unversioned",
+        use_cache: bool = False,
+        temperature: float = 0.2,
+        max_tokens: int = 2048,
+    ) -> str:
+        """Choose a model tier from task complexity and record the decision."""
+        decision = choose_provider(
+            messages,
+            task_type=task_type,
+            local_available=not self._is_mock("vllm"),
+        )
+        provider = decision.provider
+        if self._is_mock(provider):
+            provider = settings.llm_primary_provider
+        await trace_recorder.emit({
+            "event": "model_route",
+            "task_type": task_type,
+            "provider": provider,
+            "reason": decision.reason,
+            "complexity": decision.complexity,
+            "prompt_version": prompt_version,
+        })
+        return await self.chat(
+            messages,
+            provider=provider,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            prompt_version=prompt_version,
+            use_cache=use_cache,
+        )
 
     async def chat_reasoning(
         self,
         messages: list[dict],
         stream: bool = False,
     ) -> str | AsyncGenerator[str, None]:
-        """使用推理模型（DeepSeek V3）"""
+        """使用推理模型（DeepSeek V4 Flash，默认启用 thinking）"""
         return await self.chat(
-            messages, provider="deepseek", model="deepseek-v4-flash", temperature=0.3, stream=stream
+            messages, provider="deepseek", model="deepseek-reasoner", temperature=0.3, stream=stream
         )
 
     async def chat_with_long_context(
@@ -206,6 +325,22 @@ class LLMGateway:
         """使用长文本模型（智谱 GLM-4-Flash 128K）"""
         return await self.chat(
             messages, provider="zhipu", model="glm-4-flash", stream=stream
+        )
+
+    async def chat_local(
+        self,
+        messages: list[dict],
+        stream: bool = False,
+        temperature: float = 0.2,
+        max_tokens: int = 2048,
+    ) -> str | AsyncGenerator[str, None]:
+        """Use the configured self-hosted vLLM service."""
+        return await self.chat(
+            messages,
+            provider="vllm",
+            stream=stream,
+            temperature=temperature,
+            max_tokens=max_tokens,
         )
 
 

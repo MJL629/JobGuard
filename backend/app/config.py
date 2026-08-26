@@ -28,6 +28,12 @@ class Settings(BaseSettings):
     deepseek_api_key: str = ""
     siliconflow_api_key: str = ""
 
+    # --- Local / self-hosted OpenAI-compatible model ---
+    vllm_base_url: str = "http://127.0.0.1:6006/v1"
+    vllm_api_key: str = "local-vllm"
+    vllm_model: str = "qwen2.5-7b"
+    llm_primary_provider: str = "zhipu"
+
     # --- 数据库 ---
     mysql_host: str = "localhost"
     mysql_port: int = 3306

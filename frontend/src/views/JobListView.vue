@@ -1,43 +1,43 @@
 <template>
   <div class="job-list-view">
     <div class="page-header">
-      <h2>Job Recommendations</h2>
-      <el-tag type="success">12 jobs available</el-tag>
+      <h2>岗位推荐</h2>
+      <el-tag type="success">共 {{ total }} 个岗位</el-tag>
     </div>
 
     <!-- Filter Bar -->
     <div class="filter-bar">
-      <el-select v-model="category" placeholder="Category" clearable style="width: 160px">
-        <el-option label="Engineering" value="engineering" />
-        <el-option label="Algorithm" value="algorithm" />
-        <el-option label="Product/Data/Test" value="product_data_testing" />
-        <el-option label="Security" value="security" />
+      <el-select v-model="category" placeholder="岗位大类" clearable style="width: 160px">
+        <el-option label="研发工程" value="engineering" />
+        <el-option label="算法" value="algorithm" />
+        <el-option label="产品、数据与测试" value="product_data_testing" />
+        <el-option label="安全" value="security" />
       </el-select>
-      <el-select v-model="subCategory" placeholder="Sub-category" clearable style="width: 150px">
-        <el-option label="Backend" value="backend" />
-        <el-option label="Frontend" value="frontend" />
-        <el-option label="Full Stack" value="fullstack" />
-        <el-option label="AI Infra" value="ai_infra" />
-        <el-option label="DevOps" value="devops" />
-        <el-option label="LLM Algorithm" value="llm_algo" />
-        <el-option label="Agent Algorithm" value="agent_algo" />
-        <el-option label="Data Analysis" value="data_analysis" />
-        <el-option label="AI Product Manager" value="ai_pm" />
+      <el-select v-model="subCategory" placeholder="细分方向" clearable style="width: 150px">
+        <el-option label="后端开发" value="backend" />
+        <el-option label="前端开发" value="frontend" />
+        <el-option label="全栈开发" value="fullstack" />
+        <el-option label="人工智能基础设施" value="ai_infra" />
+        <el-option label="运维开发" value="devops" />
+        <el-option label="大模型算法" value="llm_algo" />
+        <el-option label="智能体算法" value="agent_algo" />
+        <el-option label="数据分析" value="data_analysis" />
+        <el-option label="人工智能产品经理" value="ai_pm" />
       </el-select>
-      <el-select v-model="location" placeholder="Location" clearable style="width: 130px">
-        <el-option label="Beijing" value="beijing" />
-        <el-option label="Shanghai" value="shanghai" />
-        <el-option label="Hangzhou" value="hangzhou" />
-        <el-option label="Shenzhen" value="shenzhen" />
-        <el-option label="Guangzhou" value="guangzhou" />
+      <el-select v-model="location" placeholder="工作城市" clearable style="width: 130px">
+        <el-option label="北京" value="beijing" />
+        <el-option label="上海" value="shanghai" />
+        <el-option label="杭州" value="hangzhou" />
+        <el-option label="深圳" value="shenzhen" />
+        <el-option label="广州" value="guangzhou" />
       </el-select>
-      <el-input-number v-model="salaryMin" :min="0" :step="5000" placeholder="Min salary" style="width: 150px" />
-      <el-button type="primary" :icon="Search">Search</el-button>
-      <el-button :icon="Refresh" @click="loadJobs">Refresh</el-button>
+      <el-input-number v-model="salaryMin" :min="0" :step="5000" placeholder="最低月薪" style="width: 150px" />
+      <el-button type="primary" :icon="Search" @click="searchJobs">搜索</el-button>
+      <el-button :icon="Refresh" @click="loadJobs">刷新</el-button>
     </div>
 
     <!-- Job Cards -->
-    <div class="job-cards">
+    <div class="job-cards" v-loading="loading">
       <div class="job-card" v-for="job in jobs" :key="job.id">
         <div class="card-main">
           <div class="card-left">
@@ -59,17 +59,18 @@
           <div class="card-right">
             <div class="match-score" v-if="job.match_score">
               <el-progress type="circle" :percentage="job.match_score" :width="60" :color="matchColor(job.match_score)" />
-              <span class="match-label">Match</span>
+              <span class="match-label">匹配度</span>
             </div>
             <div class="card-actions">
-              <el-button size="small" type="primary" @click="analyzeJob(job)">Analyze</el-button>
-              <el-button size="small" @click="generateResume(job)">Resume</el-button>
+              <el-button size="small" type="primary" @click="analyzeJob(job)">分析岗位</el-button>
+              <el-button size="small" @click="generateResume(job)">生成简历</el-button>
             </div>
           </div>
         </div>
         <div class="card-requirements" v-if="job.requirements && job.requirements.length">
-          <el-tag size="small" v-for="req in job.requirements.slice(0, 6)" :key="req" class="req-tag" effect="plain">{{ req }}</el-tag>
+          <el-tag size="small" v-for="req in job.requirements.slice(0, 6)" :key="String(req)" class="req-tag" effect="plain">{{ requirementText(req) }}</el-tag>
         </div>
+        <div class="match-reasons" v-if="job.match_reasons?.length">{{ job.match_reasons.join('；') }}</div>
       </div>
     </div>
 
@@ -89,63 +90,50 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import { recommendJobs } from '../api/jobs'
+import { useUserStore } from '../stores/user'
 
 const router = useRouter()
+const userStore = useUserStore()
 const category = ref('')
 const subCategory = ref('')
 const location = ref('')
 const salaryMin = ref(null)
 const page = ref(1)
 const pageSize = ref(20)
-const total = ref(12)
+const total = ref(0)
+const jobs = ref([])
+const loading = ref(false)
 
-const jobs = ref([
-  {
-    id: 1, company_name: 'TechCorp Ltd.', job_title: 'Java Backend Developer',
-    sub_category: 'Backend', location: 'Beijing', salary_min: 15000, salary_max: 25000,
-    match_score: 88,
-    requirements: ['Java', 'Spring Boot', 'MySQL', 'Redis', 'Microservices', 'Docker'],
-  },
-  {
-    id: 2, company_name: 'WebCo Tech', job_title: 'Frontend Developer (React)',
-    sub_category: 'Frontend', location: 'Hangzhou', salary_min: 12000, salary_max: 20000,
-    match_score: 72,
-    requirements: ['React', 'TypeScript', 'CSS', 'Webpack', 'Node.js'],
-  },
-  {
-    id: 3, company_name: 'AI Labs', job_title: 'LLM Application Engineer',
-    sub_category: 'LLM Algorithm', location: 'Beijing', salary_min: 25000, salary_max: 40000,
-    match_score: 65,
-    requirements: ['Python', 'PyTorch', 'LangChain', 'RAG', 'Prompt Engineering'],
-  },
-  {
-    id: 4, company_name: 'DataFlow Inc.', job_title: 'Backend Engineer (Go)',
-    sub_category: 'Backend', location: 'Shanghai', salary_min: 18000, salary_max: 30000,
-    match_score: 81,
-    requirements: ['Go', 'gRPC', 'Kubernetes', 'PostgreSQL', 'Kafka'],
-  },
-  {
-    id: 5, company_name: 'CloudBase', job_title: 'DevOps Engineer',
-    sub_category: 'DevOps', location: 'Shenzhen', salary_min: 20000, salary_max: 35000,
-    match_score: 58,
-    requirements: ['Docker', 'Kubernetes', 'CI/CD', 'Terraform', 'AWS'],
-  },
-  {
-    id: 6, company_name: 'SafeNet', job_title: 'Security Engineer',
-    sub_category: 'Cybersecurity', location: 'Beijing', salary_min: 22000, salary_max: 35000,
-    match_score: 45,
-    requirements: ['Network Security', 'Penetration Testing', 'WAF', 'SIEM'],
-  },
-])
+const loadJobs = async () => {
+  loading.value = true
+  try {
+    const res = await recommendJobs(userStore.user.id, {
+      page: page.value,
+      page_size: pageSize.value,
+      category: category.value || undefined,
+      sub_category: subCategory.value || undefined,
+      location: location.value || undefined,
+      salary_min: salaryMin.value ?? undefined,
+    })
+    jobs.value = res.data?.items || []
+    total.value = res.data?.total || 0
+  } catch (error) {
+    ElMessage.error(error?.response?.data?.detail || '岗位加载失败')
+  } finally {
+    loading.value = false
+  }
+}
 
-const loadJobs = () => { /* API call placeholder */ }
+const searchJobs = () => { page.value = 1; loadJobs() }
 
 const analyzeJob = (job) => {
-  router.push({ name: 'JobAnalysis', query: { job: job.job_title, company: job.company_name } })
+  router.push({ name: 'JobAnalysis', params: { id: job.id } })
 }
 
 const generateResume = (job) => {
-  router.push({ name: 'Resume', query: { job: job.job_title } })
+  router.push({ name: 'Resume', query: { job_id: job.id } })
 }
 
 const formatSalary = (val) => {
@@ -158,6 +146,10 @@ const matchColor = (score) => {
   if (score >= 60) return '#409eff'
   return '#e6a23c'
 }
+
+const requirementText = (req) => typeof req === 'string' ? req : (req?.skill_name || req?.name || req?.text || '岗位要求')
+
+onMounted(loadJobs)
 </script>
 
 <style scoped>
@@ -191,6 +183,7 @@ const matchColor = (score) => {
 
 .card-requirements { margin-top: 12px; display: flex; gap: 6px; flex-wrap: wrap; }
 .req-tag { font-size: 12px; }
+.match-reasons { margin-top: 10px; color: #606266; font-size: 12px; }
 
 .pagination-wrap { margin-top: 20px; display: flex; justify-content: center; }
 </style>
