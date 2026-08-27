@@ -153,17 +153,32 @@ onMounted(loadJobs)
 .page-header h2 { margin: 0 0 6px; }.page-header p { margin: 0; color: #909399; font-size: 13px; }
 .header-tags { display: flex; gap: 8px; }.filter-bar { display: flex; flex-wrap: wrap; gap: 10px; padding: 16px; background: #fff; border-radius: 10px; margin-bottom: 16px; box-shadow: 0 1px 8px rgba(0,0,0,.06); }
 .job-cards { min-height: 180px; display: flex; flex-direction: column; gap: 12px; margin-top: 16px; }
-.job-card { background: #fff; padding: 18px 20px; border-radius: 10px; box-shadow: 0 1px 8px rgba(0,0,0,.06); }
+.job-card { background: #fff; padding: 18px 20px; border-radius: 10px; box-shadow: 0 1px 8px rgba(0,0,0,.06); overflow: hidden; }
 .card-main { display: flex; justify-content: space-between; gap: 20px; }.card-content { min-width: 0; flex: 1; }
 .card-content h3 { margin: 0 0 6px; color: #303133; }.company { margin: 0 0 10px; color: #606266; }
-.card-tags, .requirements { display: flex; flex-wrap: wrap; gap: 6px; }.requirements { margin-top: 10px; }
-.requirements span { padding: 3px 8px; background: #f5f7fa; border-radius: 4px; color: #606266; font-size: 12px; }
+.card-tags, .requirements { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }.requirements { margin-top: 10px; max-width: 100%; overflow: hidden; }
+.requirements span {
+  max-width: 100%;
+  padding: 3px 8px;
+  background: #f5f7fa;
+  border-radius: 4px;
+  color: #606266;
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 .source-meta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 9px; color: #909399; font-size: 12px; }
 .source-meta a { color: #409eff; text-decoration: none; }.source-meta a:hover { text-decoration: underline; }
 .card-side { min-width: 145px; display: flex; flex-direction: column; align-items: flex-end; gap: 14px; }
 .match-score { display: flex; flex-direction: column; align-items: flex-end; }.match-score strong { color: #409eff; font-size: 24px; }.match-score span { color: #909399; font-size: 12px; }
 .pending-score strong { color: #909399; font-size: 17px; }
-.actions { display: flex; gap: 6px; }.explanation { margin-top: 14px; padding-top: 12px; border-top: 1px solid #ebeef5; font-size: 12px; line-height: 1.7; }
+.actions { display: flex; gap: 6px; }.explanation { margin-top: 14px; padding-top: 12px; border-top: 1px solid #ebeef5; font-size: 12px; line-height: 1.7; word-break: break-word; overflow-wrap: anywhere; }
 .reason { color: #529b2e; }.concern { color: #b88230; }.pagination-wrap { display: flex; justify-content: center; margin-top: 20px; }
 @media (max-width: 700px) { .card-main { flex-direction: column; }.card-side { align-items: flex-start; }.match-score { align-items: flex-start; } }
 </style>
