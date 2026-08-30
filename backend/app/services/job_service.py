@@ -183,7 +183,17 @@ class JobService:
 
     @classmethod
     def _score_job(cls, profile: dict, job: dict) -> dict:
-        """只对双方均有证据的维度评分，未知信息不再自动获得中性分。"""
+        """规则召回 + 关键词召回 + 语义召回的融合排序。
+
+        设计目标：
+        - 规则分 50%：岗位方向、城市、薪资、工作强度等硬条件优先。
+        - 关键词分 25%：显式技能/职责命中，保证推荐理由可解释。
+        - 语义分 25%：用岗位 taxonomy 和同义词扩展弥补字面不一致。
+
+        这里不让 LLM 直接生成匹配度，避免推荐分数不可复现。后续如果
+        Chroma job_kb 已完整构建，可把 semantic 部分替换/增强为真实
+        embedding top-k 相似度。
+        """
         basic = profile.get("basic", {})
         preferences = profile.get("preferences", {})
         skills = {
@@ -191,13 +201,98 @@ class JobService:
             for item in profile.get("skills", [])
             if item.get("skill_name")
         }
+        projects = profile.get("projects", []) or []
+        has_profile_evidence = bool(
+            basic.get("expected_salary_min")
+            or basic.get("expected_salary_max")
+            or preferences.get("preferred_job_types")
+            or preferences.get("preferred_locations")
+            or skills
+            or projects
+        )
+        profile_text = cls._profile_text(profile)
+        job_text = cls._job_search_text(job)
+
         reasons: list[str] = []
         concerns: list[str] = []
         hard_conflicts: list[str] = []
         unassessed: list[str] = []
-        breakdown: dict = {}
-        assessed_weight = 0
-        earned_score = 0
+
+        rule_score, rule_reasons, rule_concerns, rule_conflicts, rule_unassessed, rule_detail = cls._rule_recall_score(
+            basic=basic,
+            preferences=preferences,
+            job=job,
+        )
+        keyword_score, keyword_reasons, keyword_concerns, keyword_detail = cls._keyword_recall_score(
+            skills=skills,
+            projects=projects,
+            job=job,
+        )
+        semantic_score, semantic_reasons, semantic_concerns, semantic_detail = cls._semantic_recall_score(
+            profile_text=profile_text,
+            job=job,
+            job_text=job_text,
+            preferences=preferences,
+        )
+
+        reasons.extend(rule_reasons + keyword_reasons + semantic_reasons)
+        concerns.extend(rule_concerns + keyword_concerns + semantic_concerns)
+        hard_conflicts.extend(rule_conflicts)
+        unassessed.extend(rule_unassessed)
+
+        source_bonus = 3 if cls._is_domestic_or_official(job) else 0
+
+        raw_score = rule_score * 0.50 + keyword_score * 0.25 + semantic_score * 0.25 + source_bonus
+        if hard_conflicts:
+            raw_score = min(raw_score, 49)
+
+        evidence_coverage = cls._recommendation_evidence_coverage(rule_detail, keyword_detail, semantic_detail)
+        if not has_profile_evidence:
+            evidence_coverage = 0
+        match_score = None if evidence_coverage < 50 else max(0, min(98, round(raw_score)))
+        if match_score is None:
+            concerns.insert(0, f"评分证据覆盖率仅{evidence_coverage}%，暂不显示误导性的匹配百分比")
+        if unassessed:
+            concerns.append(f"规则未参与项：{'、'.join(dict.fromkeys(unassessed))}")
+
+        return {
+            "match_score": match_score,
+            "match_reasons": reasons[:8],
+            "match_concerns": concerns[:8],
+            "score_breakdown": {
+                "rule_recall": {"score": round(rule_score, 2), "weight": 0.50, "detail": rule_detail},
+                "keyword_recall": {"score": round(keyword_score, 2), "weight": 0.25, "detail": keyword_detail},
+                "semantic_recall": {"score": round(semantic_score, 2), "weight": 0.25, "detail": semantic_detail},
+                "source_bonus": source_bonus,
+                "final_formula": "rule*0.50 + keyword*0.25 + semantic*0.25 + source_bonus - hard_conflict_cap",
+            },
+            "retrieval_channels": {
+                "rule": rule_reasons,
+                "keyword": keyword_reasons,
+                "semantic": semantic_reasons,
+            },
+            "evidence_coverage": evidence_coverage,
+            "unassessed_fields": list(dict.fromkeys(unassessed)),
+            "hard_constraint_status": "conflict" if hard_conflicts else ("clear" if evidence_coverage >= 50 else "unknown"),
+            "hard_conflicts": list(dict.fromkeys(hard_conflicts)),
+        }
+
+    @classmethod
+    def _rule_recall_score(
+        cls,
+        *,
+        basic: dict,
+        preferences: dict,
+        job: dict,
+    ) -> tuple[float, list[str], list[str], list[str], list[str], dict]:
+        """硬条件规则召回：方向/地点/薪资/工作强度/来源。"""
+        reasons: list[str] = []
+        concerns: list[str] = []
+        hard_conflicts: list[str] = []
+        unassessed: list[str] = []
+        detail: dict = {}
+        assessed = 0
+        earned = 0.0
 
         directions = [str(item).lower() for item in preferences.get("preferred_job_types") or []]
         job_direction_text = " ".join([
@@ -205,49 +300,49 @@ class JobService:
             str(job.get("job_category", "")),
         ]).lower()
         if directions and job_direction_text.strip():
-            assessed_weight += 25
+            assessed += 25
             matched_direction = next(
                 (direction for direction in directions if cls._direction_matches(direction, job_direction_text)),
                 None,
             )
             direction_score = 25 if matched_direction else 0
-            earned_score += direction_score
+            earned += direction_score
             if matched_direction:
-                reasons.append(f"方向：{matched_direction}与“{job.get('job_title') or '该岗位'}”一致")
+                reasons.append(f"规则召回：岗位方向命中 {matched_direction}")
             else:
                 message = f"方向冲突：偏好{'/'.join(directions)}，岗位为{job.get('job_title') or '未命名岗位'}"
                 concerns.append(message)
                 hard_conflicts.append(message)
-            breakdown["direction"] = {"score": direction_score, "max": 25, "assessed": True}
+            detail["direction"] = {"score": direction_score, "max": 25, "assessed": True}
         else:
             missing = "画像岗位方向" if not directions else "岗位方向"
             unassessed.append(missing)
-            breakdown["direction"] = {"score": None, "max": 25, "assessed": False}
+            detail["direction"] = {"score": None, "max": 25, "assessed": False}
 
         locations = [str(item).lower() for item in preferences.get("preferred_locations") or []]
         job_location = str(job.get("location", "")).lower()
         if locations and job_location:
-            assessed_weight += 20
+            assessed += 20
             location_score = 20 if any(location in job_location or job_location in location for location in locations) else 0
-            earned_score += location_score
+            earned += location_score
             if location_score:
                 matched_location = next(location for location in locations if location in job_location or job_location in location)
-                reasons.append(f"地点：{job.get('location')}命中意向城市{matched_location}")
+                reasons.append(f"规则召回：地点命中 {matched_location}")
             else:
                 message = f"地点冲突：岗位在{job.get('location')}，意向为{'/'.join(locations)}"
                 concerns.append(message)
                 hard_conflicts.append(message)
-            breakdown["location"] = {"score": location_score, "max": 20, "assessed": True}
+            detail["location"] = {"score": location_score, "max": 20, "assessed": True}
         else:
             missing = "画像意向城市" if not locations else "岗位城市"
             unassessed.append(missing)
-            breakdown["location"] = {"score": None, "max": 20, "assessed": False}
+            detail["location"] = {"score": None, "max": 20, "assessed": False}
 
         expected_min = basic.get("expected_salary_min")
         salary_min = job.get("salary_min")
         salary_max = job.get("salary_max")
         if expected_min and salary_max:
-            assessed_weight += 20
+            assessed += 20
             if salary_max < expected_min:
                 salary_score = 0
                 message = f"薪资冲突：岗位上限{salary_max // 1000}K，低于期望下限{expected_min // 1000}K"
@@ -255,62 +350,239 @@ class JobService:
                 hard_conflicts.append(message)
             elif salary_min and salary_min >= expected_min:
                 salary_score = 20
-                reasons.append(f"薪资：岗位{salary_min // 1000}-{salary_max // 1000}K达到期望下限")
+                reasons.append(f"规则召回：薪资 {salary_min // 1000}-{salary_max // 1000}K 达到期望")
             else:
                 salary_score = 14
-                reasons.append(f"薪资：岗位上限{salary_max // 1000}K达到期望，但下限仍需确认")
-            earned_score += salary_score
-            breakdown["salary"] = {"score": salary_score, "max": 20, "assessed": True}
+                reasons.append(f"规则召回：薪资上限 {salary_max // 1000}K 达到期望")
+            earned += salary_score
+            detail["salary"] = {"score": salary_score, "max": 20, "assessed": True}
         else:
             missing = "画像期望薪资" if not expected_min else "岗位薪资"
             unassessed.append(missing)
-            breakdown["salary"] = {"score": None, "max": 20, "assessed": False}
+            detail["salary"] = {"score": None, "max": 20, "assessed": False}
 
+        cls._append_workload_conflicts(preferences, job, concerns, hard_conflicts)
+        workload_score = 0 if any("工作强度冲突" in item or "休息制度冲突" in item for item in hard_conflicts) else 15
+        assessed += 15
+        earned += workload_score
+        detail["workload"] = {"score": workload_score, "max": 15, "assessed": True}
+
+        source_score = 10 if cls._is_domestic_or_official(job) else 4
+        assessed += 10
+        earned += source_score
+        detail["source"] = {"score": source_score, "max": 10, "assessed": True}
+
+        normalized = earned / assessed * 100 if assessed else 0
+        return normalized, reasons, concerns, hard_conflicts, unassessed, detail
+
+    @classmethod
+    def _keyword_recall_score(
+        cls,
+        *,
+        skills: set[str],
+        projects: list[dict],
+        job: dict,
+    ) -> tuple[float, list[str], list[str], dict]:
+        """关键词召回：技能词、JD 要求和项目技术栈显式命中。"""
+        reasons: list[str] = []
+        concerns: list[str] = []
         requirement_text = " ".join([
             *[str(item) for item in job.get("requirements") or []],
             str(job.get("jd_text") or ""),
         ])
         required_skills = cls._extract_required_skills(requirement_text)
-        if required_skills and skills:
-            assessed_weight += 35
-            matched = sorted(required_skills & skills)
-            missing_skills = sorted(required_skills - skills)
-            skill_score = round(35 * len(matched) / len(required_skills))
-            earned_score += skill_score
-            if matched:
-                reasons.append(f"技能：命中{len(matched)}/{len(required_skills)}项（{'、'.join(matched[:5])}）")
-            if missing_skills:
-                concerns.append(f"技能缺口：岗位提到{'、'.join(missing_skills[:5])}，画像暂未体现")
-            breakdown["skills"] = {"score": skill_score, "max": 35, "assessed": True}
-        else:
-            missing = "画像技能" if not skills else "岗位技能要求"
-            unassessed.append(missing)
-            breakdown["skills"] = {"score": None, "max": 35, "assessed": False}
-
-        cls._append_workload_conflicts(preferences, job, concerns, hard_conflicts)
-
-        coverage = assessed_weight
-        if coverage < 50:
-            match_score = None
-            concerns.insert(0, f"评分证据覆盖率仅{coverage}%，暂不显示误导性的匹配百分比")
-        else:
-            match_score = round(earned_score / assessed_weight * 100)
-            if hard_conflicts:
-                match_score = min(match_score, 49)
-
-        if unassessed:
-            concerns.append(f"未参与评分：{'、'.join(unassessed)}")
-
-        return {
-            "match_score": match_score,
-            "match_reasons": reasons,
-            "match_concerns": concerns,
-            "score_breakdown": breakdown,
-            "evidence_coverage": coverage,
-            "unassessed_fields": unassessed,
-            "hard_constraint_status": "conflict" if hard_conflicts else ("clear" if coverage >= 50 else "unknown"),
-            "hard_conflicts": hard_conflicts,
+        matched_skills = sorted(required_skills & skills)
+        project_terms = {
+            cls._normalize_term(term)
+            for project in projects
+            for term in [
+                *(project.get("tech_stack") or [] if isinstance(project.get("tech_stack"), list) else []),
+                project.get("project_name", ""),
+                project.get("description", ""),
+            ]
+            if term
         }
+        matched_project_terms = sorted(required_skills & project_terms)
+
+        if not skills and not project_terms:
+            return 0.0, reasons, ["关键词召回：画像暂无可匹配技能或项目"], {
+                "assessed": False,
+                "required_skills": sorted(required_skills),
+                "matched_skills": [],
+                "matched_project_terms": [],
+            }
+
+        if not required_skills:
+            return 35.0, reasons, ["关键词召回：岗位未抽取到明确技能词"], {
+                "assessed": False,
+                "required_skills": [],
+                "matched_skills": [],
+                "matched_project_terms": [],
+            }
+
+        skill_score = 70 * len(matched_skills) / len(required_skills) if skills else 0
+        project_score = 30 * len(matched_project_terms) / len(required_skills) if project_terms else 0
+        score = min(100, skill_score + project_score)
+        if matched_skills:
+            reasons.append(f"关键词召回：技能命中 {len(matched_skills)}/{len(required_skills)}（{'、'.join(matched_skills[:5])}）")
+        if matched_project_terms:
+            reasons.append(f"关键词召回：项目技术栈命中 {'、'.join(matched_project_terms[:4])}")
+        missing_skills = sorted(required_skills - skills)
+        if missing_skills:
+            concerns.append(f"关键词缺口：岗位提到 {'、'.join(missing_skills[:5])}，画像技能暂未体现")
+
+        return score, reasons, concerns, {
+            "assessed": True,
+            "required_skills": sorted(required_skills),
+            "matched_skills": matched_skills,
+            "matched_project_terms": matched_project_terms,
+        }
+
+    @classmethod
+    def _semantic_recall_score(
+        cls,
+        *,
+        profile_text: str,
+        job: dict,
+        job_text: str,
+        preferences: dict,
+    ) -> tuple[float, list[str], list[str], dict]:
+        """语义召回：基于岗位 taxonomy/同义词的轻量语义匹配。
+
+        这里是在线稳定版本，不依赖外部 embedding 服务；与 Chroma/BGE-M3
+        的真实向量召回可以并存，后续可把相似度写入同一 semantic 通道。
+        """
+        reasons: list[str] = []
+        concerns: list[str] = []
+        user_concepts = cls._semantic_concepts(profile_text + " " + " ".join(
+            str(item) for item in preferences.get("preferred_job_types") or []
+        ))
+        job_concepts = cls._semantic_concepts(job_text)
+        if not user_concepts or not job_concepts:
+            return 30.0, reasons, ["语义召回：画像或岗位语义信息不足"], {
+                "assessed": False,
+                "user_concepts": sorted(user_concepts),
+                "job_concepts": sorted(job_concepts),
+                "matched_concepts": [],
+            }
+
+        matched = sorted(user_concepts & job_concepts)
+        score = min(100, 25 + 75 * len(matched) / max(1, len(user_concepts)))
+        if matched:
+            reasons.append(f"语义召回：职业方向概念匹配 {'、'.join(matched[:5])}")
+        else:
+            concerns.append("语义召回：岗位表述与画像核心方向相似度较低")
+
+        # 岗位标题和细分方向对用户关注概念命中时额外强化。
+        title_text = " ".join([str(job.get("job_title") or ""), str(job.get("sub_category") or "")]).lower()
+        if matched and any(concept in title_text for concept in matched):
+            score = min(100, score + 10)
+
+        return score, reasons, concerns, {
+            "assessed": True,
+            "user_concepts": sorted(user_concepts),
+            "job_concepts": sorted(job_concepts),
+            "matched_concepts": matched,
+        }
+
+    @classmethod
+    def _recommendation_evidence_coverage(
+        cls,
+        rule_detail: dict,
+        keyword_detail: dict,
+        semantic_detail: dict,
+    ) -> int:
+        """估算推荐分数证据覆盖率，避免数据太少时展示伪精确分数。"""
+        coverage = 0
+        for key in ("direction", "location", "salary"):
+            item = rule_detail.get(key) or {}
+            if item.get("assessed"):
+                coverage += int(item.get("max") or 0)
+        if keyword_detail.get("assessed"):
+            coverage += 35
+        # 语义召回只作为增强证据，不能单独把薄画像抬成高覆盖率。
+        if semantic_detail.get("assessed") and coverage >= 50:
+            coverage += 20
+        return round(min(100, coverage))
+
+    @classmethod
+    def _profile_text(cls, profile: dict) -> str:
+        """把结构化画像压成检索文本，用于轻量语义召回。"""
+        basic = profile.get("basic", {}) or {}
+        preferences = profile.get("preferences", {}) or {}
+        parts: list[str] = [
+            str(basic.get("degree") or ""),
+            str(basic.get("major") or ""),
+            str(basic.get("school") or ""),
+            str(basic.get("current_city") or ""),
+            str(basic.get("resume_raw_text") or ""),
+        ]
+        for key in ("preferred_job_types", "preferred_sub_categories", "preferred_industries"):
+            parts.extend(str(item) for item in preferences.get(key) or [])
+        for skill in profile.get("skills", []) or []:
+            parts.append(str(skill.get("skill_name") or ""))
+            parts.append(str(skill.get("category") or ""))
+        for project in profile.get("projects", []) or []:
+            parts.append(str(project.get("project_name") or ""))
+            parts.append(str(project.get("description") or ""))
+            parts.append(str(project.get("highlights") or ""))
+            tech_stack = project.get("tech_stack") or []
+            if isinstance(tech_stack, list):
+                parts.extend(str(item) for item in tech_stack)
+        return " ".join(parts).lower()
+
+    @classmethod
+    def _job_search_text(cls, job: dict) -> str:
+        """岗位检索文本：标题、类别、JD、要求、福利、来源。"""
+        parts = [
+            job.get("company_name"),
+            job.get("job_title"),
+            job.get("job_category"),
+            job.get("sub_category"),
+            job.get("location"),
+            job.get("jd_text"),
+            job.get("source_type"),
+        ]
+        parts.extend(job.get("requirements") or [])
+        parts.extend(job.get("benefits") or [])
+        return " ".join(str(part or "") for part in parts).lower()
+
+    @classmethod
+    def _semantic_concepts(cls, text: str) -> set[str]:
+        """把不同表述归一到可解释的岗位语义概念。"""
+        lowered = str(text or "").lower()
+        taxonomy = {
+            "大模型应用": ["大模型应用", "llm application", "llm应用", "ai应用", "生成式ai", "genai"],
+            "智能体": ["agent", "智能体", "multi-agent", "多智能体", "tool calling", "function calling", "langgraph"],
+            "RAG": ["rag", "检索增强", "知识库", "向量数据库", "embedding", "语义检索", "召回"],
+            "后端工程": ["后端", "服务端", "fastapi", "spring boot", "接口", "api", "微服务"],
+            "AI Infra": ["ai infra", "ai基础设施", "vllm", "推理服务", "模型服务", "kv cache", "serving"],
+            "算法训练": ["算法", "机器学习", "深度学习", "pytorch", "tensorflow", "sft", "dpo", "lora", "后训练"],
+            "数据分析": ["数据分析", "sql", "tableau", "powerbi", "可视化", "数据挖掘"],
+            "前端工程": ["前端", "vue", "react", "typescript", "javascript", "vite"],
+            "Java工程": ["java", "spring", "mybatis", "jvm"],
+            "测试运维": ["测试", "qa", "devops", "sre", "kubernetes", "docker"],
+        }
+        return {
+            concept
+            for concept, aliases in taxonomy.items()
+            if any(alias.lower() in lowered for alias in aliases)
+        }
+
+    @classmethod
+    def _is_domestic_or_official(cls, job: dict) -> bool:
+        """国内/官方来源优先，用于抑制公开英文岗位喧宾夺主。"""
+        source_type = str(job.get("source_type") or "").lower()
+        source_url = str(job.get("source_url") or "").lower()
+        location = str(job.get("location") or "")
+        company = str(job.get("company_name") or "")
+        domestic_cities = ["北京", "上海", "广州", "深圳", "杭州", "南京", "成都", "武汉", "苏州", "西安", "珠海"]
+        source_keywords = ["beijing_hr_open_data", "official", "boss", "liepin", "lagou", "51job", "zhilian", "local", "seed"]
+        return (
+            any(city in location or city in company for city in domestic_cities)
+            or any(keyword in source_type for keyword in source_keywords)
+            or ".gov.cn" in source_url
+        )
 
     @classmethod
     def _deduplicate_jobs(cls, jobs: list[dict]) -> list[dict]:

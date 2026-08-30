@@ -35,6 +35,21 @@ async def classify_intent_node(state: JobGuardState) -> dict:
 
 async def build_execution_plan_node(state: JobGuardState) -> dict:
     """为当前意图生成确定性的业务步骤，避免模型自行越权或跳步。"""
+    state_owners = {
+        "intent": "router",
+        "execution_plan": "router",
+        "evidence_policy": "evidence_gate",
+        "user_profile": "profile_service",
+        "user_projects": "profile_service",
+        "job_info": "job_service",
+        "retrieval_results": "job_retrieval",
+        "recommended_jobs": "job_recommendation",
+        "recommendation_breakdown": "job_recommendation",
+        "company_report": "background_check",
+        "match_score": "job_service",
+        "generated_resume": "resume_service",
+        "generated_greeting": "resume_service",
+    }
     plans = {
         "build_profile": [
             {"step": "extract_profile_evidence", "executor": "profile_service"},
@@ -49,8 +64,10 @@ async def build_execution_plan_node(state: JobGuardState) -> dict:
         ],
         "recommend_jobs": [
             {"step": "load_profile", "executor": "profile_service"},
-            {"step": "search_active_jobs", "executor": "search_job_database"},
-            {"step": "score_with_explanations", "executor": "job_service"},
+            {"step": "rule_recall", "executor": "job_service", "writes": ["retrieval_results.rule"]},
+            {"step": "keyword_recall", "executor": "job_service", "writes": ["retrieval_results.keyword"]},
+            {"step": "semantic_recall", "executor": "job_service", "writes": ["retrieval_results.semantic"]},
+            {"step": "fuse_and_rank", "executor": "job_service", "writes": ["recommended_jobs", "recommendation_breakdown"]},
         ],
         "generate_resume": [
             {"step": "load_grounded_profile", "executor": "profile_service"},
@@ -67,6 +84,7 @@ async def build_execution_plan_node(state: JobGuardState) -> dict:
     intent = state.get("intent", "build_profile")
     return {
         "execution_plan": plans.get(intent, plans["build_profile"]),
+        "state_owners": state_owners,
         "current_stage": "execution_planned",
         "graph_trace": [*state.get("graph_trace", []), "build_execution_plan"],
     }
@@ -138,6 +156,7 @@ async def classify_message(
         "graph_trace": result.get("graph_trace", []),
         "execution_plan": result.get("execution_plan", []),
         "evidence_policy": result.get("evidence_policy", {}),
+        "state_owners": result.get("state_owners", {}),
     }
 
 

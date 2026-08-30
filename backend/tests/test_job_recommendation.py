@@ -36,11 +36,14 @@ def test_profile_matching_job_receives_explainable_high_score():
 
     result = job_service._score_job(profile, job)
 
-    assert result["match_score"] == 100
+    assert result["match_score"] >= 90
     assert result["evidence_coverage"] == 100
-    assert result["score_breakdown"]["direction"]["score"] == 25
-    assert result["score_breakdown"]["skills"]["score"] == 35
-    assert any("方向" in reason for reason in result["match_reasons"])
+    assert result["score_breakdown"]["rule_recall"]["weight"] == 0.50
+    assert result["score_breakdown"]["keyword_recall"]["weight"] == 0.25
+    assert result["score_breakdown"]["semantic_recall"]["weight"] == 0.25
+    assert result["score_breakdown"]["rule_recall"]["detail"]["direction"]["score"] == 25
+    assert result["score_breakdown"]["keyword_recall"]["detail"]["matched_skills"] == ["java", "mysql", "spring boot"]
+    assert any("规则召回" in reason for reason in result["match_reasons"])
     assert any("3/3" in reason for reason in result["match_reasons"])
     assert result["match_concerns"] == []
     assert result["hard_constraint_status"] == "clear"
@@ -70,11 +73,11 @@ def test_profile_mismatch_is_not_reported_as_a_recommendation_match():
 
     result = job_service._score_job(profile, job)
 
-    assert result["match_score"] == 0
+    assert result["match_score"] < 50
     assert result["match_reasons"] == []
     assert result["evidence_coverage"] == 100
     assert len(result["hard_conflicts"]) == 3
-    assert any("技能缺口" in item for item in result["match_concerns"])
+    assert any("关键词缺口" in item for item in result["match_concerns"])
 
 
 def test_missing_profile_fields_do_not_receive_neutral_scores():
@@ -94,7 +97,8 @@ def test_missing_profile_fields_do_not_receive_neutral_scores():
     assert result["match_score"] is None
     assert result["evidence_coverage"] == 0
     assert result["match_reasons"] == []
-    assert all(item["score"] is None for item in result["score_breakdown"].values())
+    assert result["score_breakdown"]["keyword_recall"]["detail"]["assessed"] is False
+    assert result["hard_constraint_status"] == "unknown"
     assert "暂不显示" in result["match_concerns"][0]
 
 
