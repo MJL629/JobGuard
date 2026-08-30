@@ -38,9 +38,9 @@ def test_profile_matching_job_receives_explainable_high_score():
 
     assert result["match_score"] >= 90
     assert result["evidence_coverage"] == 100
-    assert result["score_breakdown"]["rule_recall"]["weight"] == 0.50
+    assert result["score_breakdown"]["rule_recall"]["weight"] == 0.55
     assert result["score_breakdown"]["keyword_recall"]["weight"] == 0.25
-    assert result["score_breakdown"]["semantic_recall"]["weight"] == 0.25
+    assert result["score_breakdown"]["semantic_recall"]["weight"] == 0.20
     assert result["score_breakdown"]["rule_recall"]["detail"]["direction"]["score"] == 25
     assert result["score_breakdown"]["keyword_recall"]["detail"]["matched_skills"] == ["java", "mysql", "spring boot"]
     assert any("规则召回" in reason for reason in result["match_reasons"])

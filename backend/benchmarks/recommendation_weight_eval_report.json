@@ -1,0 +1,1920 @@
+{
+  "benchmark": "jobguard_recommendation_weight_eval",
+  "default_weights": {
+    "rule": 0.55,
+    "keyword": 0.25,
+    "semantic": 0.2
+  },
+  "metric_note": {
+    "label": "0=不推荐，1=弱相关，2=可考虑，3=强推荐",
+    "ndcg_at_3": "衡量前三名排序质量，越接近 1 越好",
+    "mrr": "第一个可考虑/强推荐岗位越靠前，分数越高",
+    "top1_hit_rate": "第一名是否至少达到可考虑"
+  },
+  "best": {
+    "weights": {
+      "rule": 0.55,
+      "keyword": 0.25,
+      "semantic": 0.2
+    },
+    "avg_ndcg_at_3": 0.9734,
+    "avg_mrr": 1.0,
+    "top1_hit_rate": 1,
+    "avg_best_vs_distractor_gap": 41.8,
+    "scenarios": [
+      {
+        "id": "mjl_agent_rag",
+        "description": "马嘉玲：优先大模型 Agent/RAG，广州，低薪可接受但不接受高强度",
+        "ndcg_at_3": 0.9226,
+        "mrr": 1.0,
+        "top1_relevance": 3,
+        "best_vs_distractor_score_gap": 49,
+        "ranking": [
+          {
+            "id": 1,
+            "title": "算法开发实习生（RAG与Agent方向）",
+            "label": 3,
+            "match_score": 98,
+            "breakdown": {
+              "rule": 100.0,
+              "keyword": 90.0,
+              "semantic": 85.0
+            }
+          },
+          {
+            "id": 2,
+            "title": "AI Infra 实习生",
+            "label": 3,
+            "match_score": 49,
+            "breakdown": {
+              "rule": 72.22,
+              "keyword": 35.0,
+              "semantic": 50.0
+            }
+          },
+          {
+            "id": 3,
+            "title": "Java后端开发工程师",
+            "label": 1,
+            "match_score": 49,
+            "breakdown": {
+              "rule": 72.22,
+              "keyword": 33.33,
+              "semantic": 50.0
+            }
+          },
+          {
+            "id": 5,
+            "title": "大模型算法实习生",
+            "label": 2,
+            "match_score": 36,
+            "breakdown": {
+              "rule": 50.0,
+              "keyword": 0.0,
+              "semantic": 25.0
+            }
+          },
+          {
+            "id": 4,
+            "title": "前端开发实习生",
+            "label": 0,
+            "match_score": 32,
+            "breakdown": {
+              "rule": 43.33,
+              "keyword": 0.0,
+              "semantic": 25.0
+            }
+          }
+        ]
+      },
+      {
+        "id": "backend_java_guangzhou",
+        "description": "Java 后端：广州/深圳，薪资 15K+，技能硬命中更重要",
+        "ndcg_at_3": 1.0,
+        "mrr": 1.0,
+        "top1_relevance": 3,
+        "best_vs_distractor_score_gap": 15,
+        "ranking": [
+          {
+            "id": 11,
+            "title": "Java后端开发工程师",
+            "label": 3,
+            "match_score": 98,
+            "breakdown": {
+              "rule": 100.0,
+              "keyword": 92.5,
+              "semantic": 100
+            }
+          },
+          {
+            "id": 12,
+            "title": "Python后端工程师",
+            "label": 2,
+            "match_score": 83,
+            "breakdown": {
+              "rule": 100.0,
+              "keyword": 33.33,
+              "semantic": 85.0
+            }
+          },
+          {
+            "id": 13,
+            "title": "Java后端开发",
+            "label": 0,
+            "match_score": 49,
+            "breakdown": {
+              "rule": 61.11,
+              "keyword": 100,
+              "semantic": 75.0
+            }
+          },
+          {
+            "id": 14,
+            "title": "视觉设计师",
+            "label": 0,
+            "match_score": 45,
+            "breakdown": {
+              "rule": 65.56,
+              "keyword": 0.0,
+              "semantic": 30.0
+            }
+          }
+        ]
+      },
+      {
+        "id": "front_end_semantic",
+        "description": "前端用户：语义相近的 Web/Vue/React 岗位应靠前，但地点不能忽略",
+        "ndcg_at_3": 1.0,
+        "mrr": 1.0,
+        "top1_relevance": 3,
+        "best_vs_distractor_score_gap": 47,
+        "ranking": [
+          {
+            "id": 21,
+            "title": "Web前端开发工程师",
+            "label": 3,
+            "match_score": 96,
+            "breakdown": {
+              "rule": 100.0,
+              "keyword": 100,
+              "semantic": 62.5
+            }
+          },
+          {
+            "id": 22,
+            "title": "React前端实习生",
+            "label": 2,
+            "match_score": 49,
+            "breakdown": {
+              "rule": 77.78,
+              "keyword": 85.0,
+              "semantic": 62.5
+            }
+          },
+          {
+            "id": 23,
+            "title": "后端开发工程师",
+            "label": 0,
+            "match_score": 49,
+            "breakdown": {
+              "rule": 72.22,
+              "keyword": 0.0,
+              "semantic": 62.5
+            }
+          },
+          {
+            "id": 24,
+            "title": "数据分析师",
+            "label": 0,
+            "match_score": 49,
+            "breakdown": {
+              "rule": 72.22,
+              "keyword": 0.0,
+              "semantic": 72.5
+            }
+          }
+        ]
+      },
+      {
+        "id": "hard_constraint_vs_semantic",
+        "description": "边界样例：语义很像但地点/强度冲突时，规则权重过低会误排",
+        "ndcg_at_3": 0.9721,
+        "mrr": 1.0,
+        "top1_relevance": 3,
+        "best_vs_distractor_score_gap": 49,
+        "ranking": [
+          {
+            "id": 32,
+            "title": "AI应用开发实习生",
+            "label": 3,
+            "match_score": 98,
+            "breakdown": {
+              "rule": 100.0,
+              "keyword": 85.0,
+              "semantic": 100
+            }
+          },
+          {
+            "id": 31,
+            "title": "大模型Agent开发实习生",
+            "label": 1,
+            "match_score": 49,
+            "breakdown": {
+              "rule": 61.11,
+              "keyword": 90.0,
+              "semantic": 100
+            }
+          },
+          {
+            "id": 33,
+            "title": "Python后端实习生",
+            "label": 2,
+            "match_score": 49,
+            "breakdown": {
+              "rule": 72.22,
+              "keyword": 56.67,
+              "semantic": 43.75
+            }
+          }
+        ]
+      },
+      {
+        "id": "keyword_trap",
+        "description": "边界样例：技能关键词命中很多，但岗位方向明显不是目标方向",
+        "ndcg_at_3": 0.9721,
+        "mrr": 1.0,
+        "top1_relevance": 3,
+        "best_vs_distractor_score_gap": 49,
+        "ranking": [
+          {
+            "id": 41,
+            "title": "Java后端开发工程师",
+            "label": 3,
+            "match_score": 98,
+            "breakdown": {
+              "rule": 100.0,
+              "keyword": 100,
+              "semantic": 81.25
+            }
+          },
+          {
+            "id": 42,
+            "title": "低代码平台实施顾问",
+            "label": 1,
+            "match_score": 49,
+            "breakdown": {
+              "rule": 72.22,
+              "keyword": 90.0,
+              "semantic": 81.25
+            }
+          },
+          {
+            "id": 43,
+            "title": "后端开发工程师",
+            "label": 2,
+            "match_score": 49,
+            "breakdown": {
+              "rule": 77.78,
+              "keyword": 100,
+              "semantic": 62.5
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "all_results": [
+    {
+      "weights": {
+        "rule": 0.55,
+        "keyword": 0.25,
+        "semantic": 0.2
+      },
+      "avg_ndcg_at_3": 0.9734,
+      "avg_mrr": 1.0,
+      "top1_hit_rate": 1,
+      "avg_best_vs_distractor_gap": 41.8,
+      "scenarios": [
+        {
+          "id": "mjl_agent_rag",
+          "description": "马嘉玲：优先大模型 Agent/RAG，广州，低薪可接受但不接受高强度",
+          "ndcg_at_3": 0.9226,
+          "mrr": 1.0,
+          "top1_relevance": 3,
+          "best_vs_distractor_score_gap": 49,
+          "ranking": [
+            {
+              "id": 1,
+              "title": "算法开发实习生（RAG与Agent方向）",
+              "label": 3,
+              "match_score": 98,
+              "breakdown": {
+                "rule": 100.0,
+                "keyword": 90.0,
+                "semantic": 85.0
+              }
+            },
+            {
+              "id": 2,
+              "title": "AI Infra 实习生",
+              "label": 3,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 72.22,
+                "keyword": 35.0,
+                "semantic": 50.0
+              }
+            },
+            {
+              "id": 3,
+              "title": "Java后端开发工程师",
+              "label": 1,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 72.22,
+                "keyword": 33.33,
+                "semantic": 50.0
+              }
+            },
+            {
+              "id": 5,
+              "title": "大模型算法实习生",
+              "label": 2,
+              "match_score": 36,
+              "breakdown": {
+                "rule": 50.0,
+                "keyword": 0.0,
+                "semantic": 25.0
+              }
+            },
+            {
+              "id": 4,
+              "title": "前端开发实习生",
+              "label": 0,
+              "match_score": 32,
+              "breakdown": {
+                "rule": 43.33,
+                "keyword": 0.0,
+                "semantic": 25.0
+              }
+            }
+          ]
+        },
+        {
+          "id": "backend_java_guangzhou",
+          "description": "Java 后端：广州/深圳，薪资 15K+，技能硬命中更重要",
+          "ndcg_at_3": 1.0,
+          "mrr": 1.0,
+          "top1_relevance": 3,
+          "best_vs_distractor_score_gap": 15,
+          "ranking": [
+            {
+              "id": 11,
+              "title": "Java后端开发工程师",
+              "label": 3,
+              "match_score": 98,
+              "breakdown": {
+                "rule": 100.0,
+                "keyword": 92.5,
+                "semantic": 100
+              }
+            },
+            {
+              "id": 12,
+              "title": "Python后端工程师",
+              "label": 2,
+              "match_score": 83,
+              "breakdown": {
+                "rule": 100.0,
+                "keyword": 33.33,
+                "semantic": 85.0
+              }
+            },
+            {
+              "id": 13,
+              "title": "Java后端开发",
+              "label": 0,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 61.11,
+                "keyword": 100,
+                "semantic": 75.0
+              }
+            },
+            {
+              "id": 14,
+              "title": "视觉设计师",
+              "label": 0,
+              "match_score": 45,
+              "breakdown": {
+                "rule": 65.56,
+                "keyword": 0.0,
+                "semantic": 30.0
+              }
+            }
+          ]
+        },
+        {
+          "id": "front_end_semantic",
+          "description": "前端用户：语义相近的 Web/Vue/React 岗位应靠前，但地点不能忽略",
+          "ndcg_at_3": 1.0,
+          "mrr": 1.0,
+          "top1_relevance": 3,
+          "best_vs_distractor_score_gap": 47,
+          "ranking": [
+            {
+              "id": 21,
+              "title": "Web前端开发工程师",
+              "label": 3,
+              "match_score": 96,
+              "breakdown": {
+                "rule": 100.0,
+                "keyword": 100,
+                "semantic": 62.5
+              }
+            },
+            {
+              "id": 22,
+              "title": "React前端实习生",
+              "label": 2,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 77.78,
+                "keyword": 85.0,
+                "semantic": 62.5
+              }
+            },
+            {
+              "id": 23,
+              "title": "后端开发工程师",
+              "label": 0,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 72.22,
+                "keyword": 0.0,
+                "semantic": 62.5
+              }
+            },
+            {
+              "id": 24,
+              "title": "数据分析师",
+              "label": 0,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 72.22,
+                "keyword": 0.0,
+                "semantic": 72.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "hard_constraint_vs_semantic",
+          "description": "边界样例：语义很像但地点/强度冲突时，规则权重过低会误排",
+          "ndcg_at_3": 0.9721,
+          "mrr": 1.0,
+          "top1_relevance": 3,
+          "best_vs_distractor_score_gap": 49,
+          "ranking": [
+            {
+              "id": 32,
+              "title": "AI应用开发实习生",
+              "label": 3,
+              "match_score": 98,
+              "breakdown": {
+                "rule": 100.0,
+                "keyword": 85.0,
+                "semantic": 100
+              }
+            },
+            {
+              "id": 31,
+              "title": "大模型Agent开发实习生",
+              "label": 1,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 61.11,
+                "keyword": 90.0,
+                "semantic": 100
+              }
+            },
+            {
+              "id": 33,
+              "title": "Python后端实习生",
+              "label": 2,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 72.22,
+                "keyword": 56.67,
+                "semantic": 43.75
+              }
+            }
+          ]
+        },
+        {
+          "id": "keyword_trap",
+          "description": "边界样例：技能关键词命中很多，但岗位方向明显不是目标方向",
+          "ndcg_at_3": 0.9721,
+          "mrr": 1.0,
+          "top1_relevance": 3,
+          "best_vs_distractor_score_gap": 49,
+          "ranking": [
+            {
+              "id": 41,
+              "title": "Java后端开发工程师",
+              "label": 3,
+              "match_score": 98,
+              "breakdown": {
+                "rule": 100.0,
+                "keyword": 100,
+                "semantic": 81.25
+              }
+            },
+            {
+              "id": 42,
+              "title": "低代码平台实施顾问",
+              "label": 1,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 72.22,
+                "keyword": 90.0,
+                "semantic": 81.25
+              }
+            },
+            {
+              "id": 43,
+              "title": "后端开发工程师",
+              "label": 2,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 77.78,
+                "keyword": 100,
+                "semantic": 62.5
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "weights": {
+        "rule": 0.45,
+        "keyword": 0.3,
+        "semantic": 0.25
+      },
+      "avg_ndcg_at_3": 0.9734,
+      "avg_mrr": 1.0,
+      "top1_hit_rate": 1,
+      "avg_best_vs_distractor_gap": 41.8,
+      "scenarios": [
+        {
+          "id": "mjl_agent_rag",
+          "description": "马嘉玲：优先大模型 Agent/RAG，广州，低薪可接受但不接受高强度",
+          "ndcg_at_3": 0.9226,
+          "mrr": 1.0,
+          "top1_relevance": 3,
+          "best_vs_distractor_score_gap": 47,
+          "ranking": [
+            {
+              "id": 1,
+              "title": "算法开发实习生（RAG与Agent方向）",
+              "label": 3,
+              "match_score": 96,
+              "breakdown": {
+                "rule": 100.0,
+                "keyword": 90.0,
+                "semantic": 85.0
+              }
+            },
+            {
+              "id": 2,
+              "title": "AI Infra 实习生",
+              "label": 3,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 72.22,
+                "keyword": 35.0,
+                "semantic": 50.0
+              }
+            },
+            {
+              "id": 3,
+              "title": "Java后端开发工程师",
+              "label": 1,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 72.22,
+                "keyword": 33.33,
+                "semantic": 50.0
+              }
+            },
+            {
+              "id": 5,
+              "title": "大模型算法实习生",
+              "label": 2,
+              "match_score": 32,
+              "breakdown": {
+                "rule": 50.0,
+                "keyword": 0.0,
+                "semantic": 25.0
+              }
+            },
+            {
+              "id": 4,
+              "title": "前端开发实习生",
+              "label": 0,
+              "match_score": 29,
+              "breakdown": {
+                "rule": 43.33,
+                "keyword": 0.0,
+                "semantic": 25.0
+              }
+            }
+          ]
+        },
+        {
+          "id": "backend_java_guangzhou",
+          "description": "Java 后端：广州/深圳，薪资 15K+，技能硬命中更重要",
+          "ndcg_at_3": 1.0,
+          "mrr": 1.0,
+          "top1_relevance": 3,
+          "best_vs_distractor_score_gap": 19,
+          "ranking": [
+            {
+              "id": 11,
+              "title": "Java后端开发工程师",
+              "label": 3,
+              "match_score": 98,
+              "breakdown": {
+                "rule": 100.0,
+                "keyword": 92.5,
+                "semantic": 100
+              }
+            },
+            {
+              "id": 12,
+              "title": "Python后端工程师",
+              "label": 2,
+              "match_score": 79,
+              "breakdown": {
+                "rule": 100.0,
+                "keyword": 33.33,
+                "semantic": 85.0
+              }
+            },
+            {
+              "id": 13,
+              "title": "Java后端开发",
+              "label": 0,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 61.11,
+                "keyword": 100,
+                "semantic": 75.0
+              }
+            },
+            {
+              "id": 14,
+              "title": "视觉设计师",
+              "label": 0,
+              "match_score": 40,
+              "breakdown": {
+                "rule": 65.56,
+                "keyword": 0.0,
+                "semantic": 30.0
+              }
+            }
+          ]
+        },
+        {
+          "id": "front_end_semantic",
+          "description": "前端用户：语义相近的 Web/Vue/React 岗位应靠前，但地点不能忽略",
+          "ndcg_at_3": 1.0,
+          "mrr": 1.0,
+          "top1_relevance": 3,
+          "best_vs_distractor_score_gap": 45,
+          "ranking": [
+            {
+              "id": 21,
+              "title": "Web前端开发工程师",
+              "label": 3,
+              "match_score": 94,
+              "breakdown": {
+                "rule": 100.0,
+                "keyword": 100,
+                "semantic": 62.5
+              }
+            },
+            {
+              "id": 22,
+              "title": "React前端实习生",
+              "label": 2,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 77.78,
+                "keyword": 85.0,
+                "semantic": 62.5
+              }
+            },
+            {
+              "id": 23,
+              "title": "后端开发工程师",
+              "label": 0,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 72.22,
+                "keyword": 0.0,
+                "semantic": 62.5
+              }
+            },
+            {
+              "id": 24,
+              "title": "数据分析师",
+              "label": 0,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 72.22,
+                "keyword": 0.0,
+                "semantic": 72.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "hard_constraint_vs_semantic",
+          "description": "边界样例：语义很像但地点/强度冲突时，规则权重过低会误排",
+          "ndcg_at_3": 0.9721,
+          "mrr": 1.0,
+          "top1_relevance": 3,
+          "best_vs_distractor_score_gap": 49,
+          "ranking": [
+            {
+              "id": 32,
+              "title": "AI应用开发实习生",
+              "label": 3,
+              "match_score": 98,
+              "breakdown": {
+                "rule": 100.0,
+                "keyword": 85.0,
+                "semantic": 100
+              }
+            },
+            {
+              "id": 31,
+              "title": "大模型Agent开发实习生",
+              "label": 1,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 61.11,
+                "keyword": 90.0,
+                "semantic": 100
+              }
+            },
+            {
+              "id": 33,
+              "title": "Python后端实习生",
+              "label": 2,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 72.22,
+                "keyword": 56.67,
+                "semantic": 43.75
+              }
+            }
+          ]
+        },
+        {
+          "id": "keyword_trap",
+          "description": "边界样例：技能关键词命中很多，但岗位方向明显不是目标方向",
+          "ndcg_at_3": 0.9721,
+          "mrr": 1.0,
+          "top1_relevance": 3,
+          "best_vs_distractor_score_gap": 49,
+          "ranking": [
+            {
+              "id": 41,
+              "title": "Java后端开发工程师",
+              "label": 3,
+              "match_score": 98,
+              "breakdown": {
+                "rule": 100.0,
+                "keyword": 100,
+                "semantic": 81.25
+              }
+            },
+            {
+              "id": 42,
+              "title": "低代码平台实施顾问",
+              "label": 1,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 72.22,
+                "keyword": 90.0,
+                "semantic": 81.25
+              }
+            },
+            {
+              "id": 43,
+              "title": "后端开发工程师",
+              "label": 2,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 77.78,
+                "keyword": 100,
+                "semantic": 62.5
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "weights": {
+        "rule": 0.4,
+        "keyword": 0.3,
+        "semantic": 0.3
+      },
+      "avg_ndcg_at_3": 0.9734,
+      "avg_mrr": 1.0,
+      "top1_hit_rate": 1,
+      "avg_best_vs_distractor_gap": 41.4,
+      "scenarios": [
+        {
+          "id": "mjl_agent_rag",
+          "description": "马嘉玲：优先大模型 Agent/RAG，广州，低薪可接受但不接受高强度",
+          "ndcg_at_3": 0.9226,
+          "mrr": 1.0,
+          "top1_relevance": 3,
+          "best_vs_distractor_score_gap": 47,
+          "ranking": [
+            {
+              "id": 1,
+              "title": "算法开发实习生（RAG与Agent方向）",
+              "label": 3,
+              "match_score": 96,
+              "breakdown": {
+                "rule": 100.0,
+                "keyword": 90.0,
+                "semantic": 85.0
+              }
+            },
+            {
+              "id": 2,
+              "title": "AI Infra 实习生",
+              "label": 3,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 72.22,
+                "keyword": 35.0,
+                "semantic": 50.0
+              }
+            },
+            {
+              "id": 3,
+              "title": "Java后端开发工程师",
+              "label": 1,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 72.22,
+                "keyword": 33.33,
+                "semantic": 50.0
+              }
+            },
+            {
+              "id": 5,
+              "title": "大模型算法实习生",
+              "label": 2,
+              "match_score": 30,
+              "breakdown": {
+                "rule": 50.0,
+                "keyword": 0.0,
+                "semantic": 25.0
+              }
+            },
+            {
+              "id": 4,
+              "title": "前端开发实习生",
+              "label": 0,
+              "match_score": 28,
+              "breakdown": {
+                "rule": 43.33,
+                "keyword": 0.0,
+                "semantic": 25.0
+              }
+            }
+          ]
+        },
+        {
+          "id": "backend_java_guangzhou",
+          "description": "Java 后端：广州/深圳，薪资 15K+，技能硬命中更重要",
+          "ndcg_at_3": 1.0,
+          "mrr": 1.0,
+          "top1_relevance": 3,
+          "best_vs_distractor_score_gap": 20,
+          "ranking": [
+            {
+              "id": 11,
+              "title": "Java后端开发工程师",
+              "label": 3,
+              "match_score": 98,
+              "breakdown": {
+                "rule": 100.0,
+                "keyword": 92.5,
+                "semantic": 100
+              }
+            },
+            {
+              "id": 12,
+              "title": "Python后端工程师",
+              "label": 2,
+              "match_score": 78,
+              "breakdown": {
+                "rule": 100.0,
+                "keyword": 33.33,
+                "semantic": 85.0
+              }
+            },
+            {
+              "id": 13,
+              "title": "Java后端开发",
+              "label": 0,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 61.11,
+                "keyword": 100,
+                "semantic": 75.0
+              }
+            },
+            {
+              "id": 14,
+              "title": "视觉设计师",
+              "label": 0,
+              "match_score": 38,
+              "breakdown": {
+                "rule": 65.56,
+                "keyword": 0.0,
+                "semantic": 30.0
+              }
+            }
+          ]
+        },
+        {
+          "id": "front_end_semantic",
+          "description": "前端用户：语义相近的 Web/Vue/React 岗位应靠前，但地点不能忽略",
+          "ndcg_at_3": 1.0,
+          "mrr": 1.0,
+          "top1_relevance": 3,
+          "best_vs_distractor_score_gap": 43,
+          "ranking": [
+            {
+              "id": 21,
+              "title": "Web前端开发工程师",
+              "label": 3,
+              "match_score": 92,
+              "breakdown": {
+                "rule": 100.0,
+                "keyword": 100,
+                "semantic": 62.5
+              }
+            },
+            {
+              "id": 22,
+              "title": "React前端实习生",
+              "label": 2,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 77.78,
+                "keyword": 85.0,
+                "semantic": 62.5
+              }
+            },
+            {
+              "id": 23,
+              "title": "后端开发工程师",
+              "label": 0,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 72.22,
+                "keyword": 0.0,
+                "semantic": 62.5
+              }
+            },
+            {
+              "id": 24,
+              "title": "数据分析师",
+              "label": 0,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 72.22,
+                "keyword": 0.0,
+                "semantic": 72.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "hard_constraint_vs_semantic",
+          "description": "边界样例：语义很像但地点/强度冲突时，规则权重过低会误排",
+          "ndcg_at_3": 0.9721,
+          "mrr": 1.0,
+          "top1_relevance": 3,
+          "best_vs_distractor_score_gap": 49,
+          "ranking": [
+            {
+              "id": 32,
+              "title": "AI应用开发实习生",
+              "label": 3,
+              "match_score": 98,
+              "breakdown": {
+                "rule": 100.0,
+                "keyword": 85.0,
+                "semantic": 100
+              }
+            },
+            {
+              "id": 31,
+              "title": "大模型Agent开发实习生",
+              "label": 1,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 61.11,
+                "keyword": 90.0,
+                "semantic": 100
+              }
+            },
+            {
+              "id": 33,
+              "title": "Python后端实习生",
+              "label": 2,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 72.22,
+                "keyword": 56.67,
+                "semantic": 43.75
+              }
+            }
+          ]
+        },
+        {
+          "id": "keyword_trap",
+          "description": "边界样例：技能关键词命中很多，但岗位方向明显不是目标方向",
+          "ndcg_at_3": 0.9721,
+          "mrr": 1.0,
+          "top1_relevance": 3,
+          "best_vs_distractor_score_gap": 48,
+          "ranking": [
+            {
+              "id": 41,
+              "title": "Java后端开发工程师",
+              "label": 3,
+              "match_score": 97,
+              "breakdown": {
+                "rule": 100.0,
+                "keyword": 100,
+                "semantic": 81.25
+              }
+            },
+            {
+              "id": 42,
+              "title": "低代码平台实施顾问",
+              "label": 1,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 72.22,
+                "keyword": 90.0,
+                "semantic": 81.25
+              }
+            },
+            {
+              "id": 43,
+              "title": "后端开发工程师",
+              "label": 2,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 77.78,
+                "keyword": 100,
+                "semantic": 62.5
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "weights": {
+        "rule": 0.5,
+        "keyword": 0.25,
+        "semantic": 0.25
+      },
+      "avg_ndcg_at_3": 0.9734,
+      "avg_mrr": 1.0,
+      "top1_hit_rate": 1,
+      "avg_best_vs_distractor_gap": 41.2,
+      "scenarios": [
+        {
+          "id": "mjl_agent_rag",
+          "description": "马嘉玲：优先大模型 Agent/RAG，广州，低薪可接受但不接受高强度",
+          "ndcg_at_3": 0.9226,
+          "mrr": 1.0,
+          "top1_relevance": 3,
+          "best_vs_distractor_score_gap": 48,
+          "ranking": [
+            {
+              "id": 1,
+              "title": "算法开发实习生（RAG与Agent方向）",
+              "label": 3,
+              "match_score": 97,
+              "breakdown": {
+                "rule": 100.0,
+                "keyword": 90.0,
+                "semantic": 85.0
+              }
+            },
+            {
+              "id": 2,
+              "title": "AI Infra 实习生",
+              "label": 3,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 72.22,
+                "keyword": 35.0,
+                "semantic": 50.0
+              }
+            },
+            {
+              "id": 3,
+              "title": "Java后端开发工程师",
+              "label": 1,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 72.22,
+                "keyword": 33.33,
+                "semantic": 50.0
+              }
+            },
+            {
+              "id": 5,
+              "title": "大模型算法实习生",
+              "label": 2,
+              "match_score": 34,
+              "breakdown": {
+                "rule": 50.0,
+                "keyword": 0.0,
+                "semantic": 25.0
+              }
+            },
+            {
+              "id": 4,
+              "title": "前端开发实习生",
+              "label": 0,
+              "match_score": 31,
+              "breakdown": {
+                "rule": 43.33,
+                "keyword": 0.0,
+                "semantic": 25.0
+              }
+            }
+          ]
+        },
+        {
+          "id": "backend_java_guangzhou",
+          "description": "Java 后端：广州/深圳，薪资 15K+，技能硬命中更重要",
+          "ndcg_at_3": 1.0,
+          "mrr": 1.0,
+          "top1_relevance": 3,
+          "best_vs_distractor_score_gap": 15,
+          "ranking": [
+            {
+              "id": 11,
+              "title": "Java后端开发工程师",
+              "label": 3,
+              "match_score": 98,
+              "breakdown": {
+                "rule": 100.0,
+                "keyword": 92.5,
+                "semantic": 100
+              }
+            },
+            {
+              "id": 12,
+              "title": "Python后端工程师",
+              "label": 2,
+              "match_score": 83,
+              "breakdown": {
+                "rule": 100.0,
+                "keyword": 33.33,
+                "semantic": 85.0
+              }
+            },
+            {
+              "id": 13,
+              "title": "Java后端开发",
+              "label": 0,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 61.11,
+                "keyword": 100,
+                "semantic": 75.0
+              }
+            },
+            {
+              "id": 14,
+              "title": "视觉设计师",
+              "label": 0,
+              "match_score": 43,
+              "breakdown": {
+                "rule": 65.56,
+                "keyword": 0.0,
+                "semantic": 30.0
+              }
+            }
+          ]
+        },
+        {
+          "id": "front_end_semantic",
+          "description": "前端用户：语义相近的 Web/Vue/React 岗位应靠前，但地点不能忽略",
+          "ndcg_at_3": 1.0,
+          "mrr": 1.0,
+          "top1_relevance": 3,
+          "best_vs_distractor_score_gap": 45,
+          "ranking": [
+            {
+              "id": 21,
+              "title": "Web前端开发工程师",
+              "label": 3,
+              "match_score": 94,
+              "breakdown": {
+                "rule": 100.0,
+                "keyword": 100,
+                "semantic": 62.5
+              }
+            },
+            {
+              "id": 22,
+              "title": "React前端实习生",
+              "label": 2,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 77.78,
+                "keyword": 85.0,
+                "semantic": 62.5
+              }
+            },
+            {
+              "id": 23,
+              "title": "后端开发工程师",
+              "label": 0,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 72.22,
+                "keyword": 0.0,
+                "semantic": 62.5
+              }
+            },
+            {
+              "id": 24,
+              "title": "数据分析师",
+              "label": 0,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 72.22,
+                "keyword": 0.0,
+                "semantic": 72.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "hard_constraint_vs_semantic",
+          "description": "边界样例：语义很像但地点/强度冲突时，规则权重过低会误排",
+          "ndcg_at_3": 0.9721,
+          "mrr": 1.0,
+          "top1_relevance": 3,
+          "best_vs_distractor_score_gap": 49,
+          "ranking": [
+            {
+              "id": 32,
+              "title": "AI应用开发实习生",
+              "label": 3,
+              "match_score": 98,
+              "breakdown": {
+                "rule": 100.0,
+                "keyword": 85.0,
+                "semantic": 100
+              }
+            },
+            {
+              "id": 31,
+              "title": "大模型Agent开发实习生",
+              "label": 1,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 61.11,
+                "keyword": 90.0,
+                "semantic": 100
+              }
+            },
+            {
+              "id": 33,
+              "title": "Python后端实习生",
+              "label": 2,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 72.22,
+                "keyword": 56.67,
+                "semantic": 43.75
+              }
+            }
+          ]
+        },
+        {
+          "id": "keyword_trap",
+          "description": "边界样例：技能关键词命中很多，但岗位方向明显不是目标方向",
+          "ndcg_at_3": 0.9721,
+          "mrr": 1.0,
+          "top1_relevance": 3,
+          "best_vs_distractor_score_gap": 49,
+          "ranking": [
+            {
+              "id": 41,
+              "title": "Java后端开发工程师",
+              "label": 3,
+              "match_score": 98,
+              "breakdown": {
+                "rule": 100.0,
+                "keyword": 100,
+                "semantic": 81.25
+              }
+            },
+            {
+              "id": 42,
+              "title": "低代码平台实施顾问",
+              "label": 1,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 72.22,
+                "keyword": 90.0,
+                "semantic": 81.25
+              }
+            },
+            {
+              "id": 43,
+              "title": "后端开发工程师",
+              "label": 2,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 77.78,
+                "keyword": 100,
+                "semantic": 62.5
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "weights": {
+        "rule": 0.6,
+        "keyword": 0.2,
+        "semantic": 0.2
+      },
+      "avg_ndcg_at_3": 0.9734,
+      "avg_mrr": 1.0,
+      "top1_hit_rate": 1,
+      "avg_best_vs_distractor_gap": 41,
+      "scenarios": [
+        {
+          "id": "mjl_agent_rag",
+          "description": "马嘉玲：优先大模型 Agent/RAG，广州，低薪可接受但不接受高强度",
+          "ndcg_at_3": 0.9226,
+          "mrr": 1.0,
+          "top1_relevance": 3,
+          "best_vs_distractor_score_gap": 49,
+          "ranking": [
+            {
+              "id": 1,
+              "title": "算法开发实习生（RAG与Agent方向）",
+              "label": 3,
+              "match_score": 98,
+              "breakdown": {
+                "rule": 100.0,
+                "keyword": 90.0,
+                "semantic": 85.0
+              }
+            },
+            {
+              "id": 2,
+              "title": "AI Infra 实习生",
+              "label": 3,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 72.22,
+                "keyword": 35.0,
+                "semantic": 50.0
+              }
+            },
+            {
+              "id": 3,
+              "title": "Java后端开发工程师",
+              "label": 1,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 72.22,
+                "keyword": 33.33,
+                "semantic": 50.0
+              }
+            },
+            {
+              "id": 5,
+              "title": "大模型算法实习生",
+              "label": 2,
+              "match_score": 38,
+              "breakdown": {
+                "rule": 50.0,
+                "keyword": 0.0,
+                "semantic": 25.0
+              }
+            },
+            {
+              "id": 4,
+              "title": "前端开发实习生",
+              "label": 0,
+              "match_score": 34,
+              "breakdown": {
+                "rule": 43.33,
+                "keyword": 0.0,
+                "semantic": 25.0
+              }
+            }
+          ]
+        },
+        {
+          "id": "backend_java_guangzhou",
+          "description": "Java 后端：广州/深圳，薪资 15K+，技能硬命中更重要",
+          "ndcg_at_3": 1.0,
+          "mrr": 1.0,
+          "top1_relevance": 3,
+          "best_vs_distractor_score_gap": 11,
+          "ranking": [
+            {
+              "id": 11,
+              "title": "Java后端开发工程师",
+              "label": 3,
+              "match_score": 98,
+              "breakdown": {
+                "rule": 100.0,
+                "keyword": 92.5,
+                "semantic": 100
+              }
+            },
+            {
+              "id": 12,
+              "title": "Python后端工程师",
+              "label": 2,
+              "match_score": 87,
+              "breakdown": {
+                "rule": 100.0,
+                "keyword": 33.33,
+                "semantic": 85.0
+              }
+            },
+            {
+              "id": 13,
+              "title": "Java后端开发",
+              "label": 0,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 61.11,
+                "keyword": 100,
+                "semantic": 75.0
+              }
+            },
+            {
+              "id": 14,
+              "title": "视觉设计师",
+              "label": 0,
+              "match_score": 48,
+              "breakdown": {
+                "rule": 65.56,
+                "keyword": 0.0,
+                "semantic": 30.0
+              }
+            }
+          ]
+        },
+        {
+          "id": "front_end_semantic",
+          "description": "前端用户：语义相近的 Web/Vue/React 岗位应靠前，但地点不能忽略",
+          "ndcg_at_3": 1.0,
+          "mrr": 1.0,
+          "top1_relevance": 3,
+          "best_vs_distractor_score_gap": 47,
+          "ranking": [
+            {
+              "id": 21,
+              "title": "Web前端开发工程师",
+              "label": 3,
+              "match_score": 96,
+              "breakdown": {
+                "rule": 100.0,
+                "keyword": 100,
+                "semantic": 62.5
+              }
+            },
+            {
+              "id": 22,
+              "title": "React前端实习生",
+              "label": 2,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 77.78,
+                "keyword": 85.0,
+                "semantic": 62.5
+              }
+            },
+            {
+              "id": 23,
+              "title": "后端开发工程师",
+              "label": 0,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 72.22,
+                "keyword": 0.0,
+                "semantic": 62.5
+              }
+            },
+            {
+              "id": 24,
+              "title": "数据分析师",
+              "label": 0,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 72.22,
+                "keyword": 0.0,
+                "semantic": 72.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "hard_constraint_vs_semantic",
+          "description": "边界样例：语义很像但地点/强度冲突时，规则权重过低会误排",
+          "ndcg_at_3": 0.9721,
+          "mrr": 1.0,
+          "top1_relevance": 3,
+          "best_vs_distractor_score_gap": 49,
+          "ranking": [
+            {
+              "id": 32,
+              "title": "AI应用开发实习生",
+              "label": 3,
+              "match_score": 98,
+              "breakdown": {
+                "rule": 100.0,
+                "keyword": 85.0,
+                "semantic": 100
+              }
+            },
+            {
+              "id": 31,
+              "title": "大模型Agent开发实习生",
+              "label": 1,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 61.11,
+                "keyword": 90.0,
+                "semantic": 100
+              }
+            },
+            {
+              "id": 33,
+              "title": "Python后端实习生",
+              "label": 2,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 72.22,
+                "keyword": 56.67,
+                "semantic": 43.75
+              }
+            }
+          ]
+        },
+        {
+          "id": "keyword_trap",
+          "description": "边界样例：技能关键词命中很多，但岗位方向明显不是目标方向",
+          "ndcg_at_3": 0.9721,
+          "mrr": 1.0,
+          "top1_relevance": 3,
+          "best_vs_distractor_score_gap": 49,
+          "ranking": [
+            {
+              "id": 41,
+              "title": "Java后端开发工程师",
+              "label": 3,
+              "match_score": 98,
+              "breakdown": {
+                "rule": 100.0,
+                "keyword": 100,
+                "semantic": 81.25
+              }
+            },
+            {
+              "id": 42,
+              "title": "低代码平台实施顾问",
+              "label": 1,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 72.22,
+                "keyword": 90.0,
+                "semantic": 81.25
+              }
+            },
+            {
+              "id": 43,
+              "title": "后端开发工程师",
+              "label": 2,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 77.78,
+                "keyword": 100,
+                "semantic": 62.5
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "weights": {
+        "rule": 0.35,
+        "keyword": 0.3,
+        "semantic": 0.35
+      },
+      "avg_ndcg_at_3": 0.9734,
+      "avg_mrr": 1.0,
+      "top1_hit_rate": 1,
+      "avg_best_vs_distractor_gap": 40.6,
+      "scenarios": [
+        {
+          "id": "mjl_agent_rag",
+          "description": "马嘉玲：优先大模型 Agent/RAG，广州，低薪可接受但不接受高强度",
+          "ndcg_at_3": 0.9226,
+          "mrr": 1.0,
+          "top1_relevance": 3,
+          "best_vs_distractor_score_gap": 46,
+          "ranking": [
+            {
+              "id": 1,
+              "title": "算法开发实习生（RAG与Agent方向）",
+              "label": 3,
+              "match_score": 95,
+              "breakdown": {
+                "rule": 100.0,
+                "keyword": 90.0,
+                "semantic": 85.0
+              }
+            },
+            {
+              "id": 2,
+              "title": "AI Infra 实习生",
+              "label": 3,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 72.22,
+                "keyword": 35.0,
+                "semantic": 50.0
+              }
+            },
+            {
+              "id": 3,
+              "title": "Java后端开发工程师",
+              "label": 1,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 72.22,
+                "keyword": 33.33,
+                "semantic": 50.0
+              }
+            },
+            {
+              "id": 5,
+              "title": "大模型算法实习生",
+              "label": 2,
+              "match_score": 29,
+              "breakdown": {
+                "rule": 50.0,
+                "keyword": 0.0,
+                "semantic": 25.0
+              }
+            },
+            {
+              "id": 4,
+              "title": "前端开发实习生",
+              "label": 0,
+              "match_score": 27,
+              "breakdown": {
+                "rule": 43.33,
+                "keyword": 0.0,
+                "semantic": 25.0
+              }
+            }
+          ]
+        },
+        {
+          "id": "backend_java_guangzhou",
+          "description": "Java 后端：广州/深圳，薪资 15K+，技能硬命中更重要",
+          "ndcg_at_3": 1.0,
+          "mrr": 1.0,
+          "top1_relevance": 3,
+          "best_vs_distractor_score_gap": 20,
+          "ranking": [
+            {
+              "id": 11,
+              "title": "Java后端开发工程师",
+              "label": 3,
+              "match_score": 98,
+              "breakdown": {
+                "rule": 100.0,
+                "keyword": 92.5,
+                "semantic": 100
+              }
+            },
+            {
+              "id": 12,
+              "title": "Python后端工程师",
+              "label": 2,
+              "match_score": 78,
+              "breakdown": {
+                "rule": 100.0,
+                "keyword": 33.33,
+                "semantic": 85.0
+              }
+            },
+            {
+              "id": 13,
+              "title": "Java后端开发",
+              "label": 0,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 61.11,
+                "keyword": 100,
+                "semantic": 75.0
+              }
+            },
+            {
+              "id": 14,
+              "title": "视觉设计师",
+              "label": 0,
+              "match_score": 36,
+              "breakdown": {
+                "rule": 65.56,
+                "keyword": 0.0,
+                "semantic": 30.0
+              }
+            }
+          ]
+        },
+        {
+          "id": "front_end_semantic",
+          "description": "前端用户：语义相近的 Web/Vue/React 岗位应靠前，但地点不能忽略",
+          "ndcg_at_3": 1.0,
+          "mrr": 1.0,
+          "top1_relevance": 3,
+          "best_vs_distractor_score_gap": 41,
+          "ranking": [
+            {
+              "id": 21,
+              "title": "Web前端开发工程师",
+              "label": 3,
+              "match_score": 90,
+              "breakdown": {
+                "rule": 100.0,
+                "keyword": 100,
+                "semantic": 62.5
+              }
+            },
+            {
+              "id": 22,
+              "title": "React前端实习生",
+              "label": 2,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 77.78,
+                "keyword": 85.0,
+                "semantic": 62.5
+              }
+            },
+            {
+              "id": 23,
+              "title": "后端开发工程师",
+              "label": 0,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 72.22,
+                "keyword": 0.0,
+                "semantic": 62.5
+              }
+            },
+            {
+              "id": 24,
+              "title": "数据分析师",
+              "label": 0,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 72.22,
+                "keyword": 0.0,
+                "semantic": 72.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "hard_constraint_vs_semantic",
+          "description": "边界样例：语义很像但地点/强度冲突时，规则权重过低会误排",
+          "ndcg_at_3": 0.9721,
+          "mrr": 1.0,
+          "top1_relevance": 3,
+          "best_vs_distractor_score_gap": 49,
+          "ranking": [
+            {
+              "id": 32,
+              "title": "AI应用开发实习生",
+              "label": 3,
+              "match_score": 98,
+              "breakdown": {
+                "rule": 100.0,
+                "keyword": 85.0,
+                "semantic": 100
+              }
+            },
+            {
+              "id": 31,
+              "title": "大模型Agent开发实习生",
+              "label": 1,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 61.11,
+                "keyword": 90.0,
+                "semantic": 100
+              }
+            },
+            {
+              "id": 33,
+              "title": "Python后端实习生",
+              "label": 2,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 72.22,
+                "keyword": 56.67,
+                "semantic": 43.75
+              }
+            }
+          ]
+        },
+        {
+          "id": "keyword_trap",
+          "description": "边界样例：技能关键词命中很多，但岗位方向明显不是目标方向",
+          "ndcg_at_3": 0.9721,
+          "mrr": 1.0,
+          "top1_relevance": 3,
+          "best_vs_distractor_score_gap": 47,
+          "ranking": [
+            {
+              "id": 41,
+              "title": "Java后端开发工程师",
+              "label": 3,
+              "match_score": 96,
+              "breakdown": {
+                "rule": 100.0,
+                "keyword": 100,
+                "semantic": 81.25
+              }
+            },
+            {
+              "id": 42,
+              "title": "低代码平台实施顾问",
+              "label": 1,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 72.22,
+                "keyword": 90.0,
+                "semantic": 81.25
+              }
+            },
+            {
+              "id": 43,
+              "title": "后端开发工程师",
+              "label": 2,
+              "match_score": 49,
+              "breakdown": {
+                "rule": 77.78,
+                "keyword": 100,
+                "semantic": 62.5
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

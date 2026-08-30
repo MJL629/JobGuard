@@ -25,6 +25,12 @@ from app.services.profile_service import profile_service
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_RECOMMENDATION_WEIGHTS = {
+    "rule": 0.55,
+    "keyword": 0.25,
+    "semantic": 0.20,
+}
+
 
 class JobService:
     """岗位分析服务"""
@@ -178,17 +184,19 @@ class JobService:
             "page": page,
             "page_size": page_size,
             "profile_completeness": profile.get("completeness", 0),
-            "scoring_version": "evidence-rules-v2",
+            "scoring_version": "hybrid-recall-v3",
+            "scoring_weights": DEFAULT_RECOMMENDATION_WEIGHTS,
+            "weight_selection": "offline benchmark: backend/benchmarks/recommendation_weight_eval.py",
         }
 
     @classmethod
-    def _score_job(cls, profile: dict, job: dict) -> dict:
+    def _score_job(cls, profile: dict, job: dict, weights: Optional[dict[str, float]] = None) -> dict:
         """规则召回 + 关键词召回 + 语义召回的融合排序。
 
         设计目标：
-        - 规则分 50%：岗位方向、城市、薪资、工作强度等硬条件优先。
+        - 规则分 55%：岗位方向、城市、薪资、工作强度等硬条件优先。
         - 关键词分 25%：显式技能/职责命中，保证推荐理由可解释。
-        - 语义分 25%：用岗位 taxonomy 和同义词扩展弥补字面不一致。
+        - 语义分 20%：用岗位 taxonomy 和同义词扩展弥补字面不一致。
 
         这里不让 LLM 直接生成匹配度，避免推荐分数不可复现。后续如果
         Chroma job_kb 已完整构建，可把 semantic 部分替换/增强为真实
@@ -218,6 +226,8 @@ class JobService:
         hard_conflicts: list[str] = []
         unassessed: list[str] = []
 
+        normalized_weights = cls._normalize_recommendation_weights(weights)
+
         rule_score, rule_reasons, rule_concerns, rule_conflicts, rule_unassessed, rule_detail = cls._rule_recall_score(
             basic=basic,
             preferences=preferences,
@@ -242,7 +252,12 @@ class JobService:
 
         source_bonus = 3 if cls._is_domestic_or_official(job) else 0
 
-        raw_score = rule_score * 0.50 + keyword_score * 0.25 + semantic_score * 0.25 + source_bonus
+        raw_score = (
+            rule_score * normalized_weights["rule"]
+            + keyword_score * normalized_weights["keyword"]
+            + semantic_score * normalized_weights["semantic"]
+            + source_bonus
+        )
         if hard_conflicts:
             raw_score = min(raw_score, 49)
 
@@ -260,11 +275,15 @@ class JobService:
             "match_reasons": reasons[:8],
             "match_concerns": concerns[:8],
             "score_breakdown": {
-                "rule_recall": {"score": round(rule_score, 2), "weight": 0.50, "detail": rule_detail},
-                "keyword_recall": {"score": round(keyword_score, 2), "weight": 0.25, "detail": keyword_detail},
-                "semantic_recall": {"score": round(semantic_score, 2), "weight": 0.25, "detail": semantic_detail},
+                "rule_recall": {"score": round(rule_score, 2), "weight": normalized_weights["rule"], "detail": rule_detail},
+                "keyword_recall": {"score": round(keyword_score, 2), "weight": normalized_weights["keyword"], "detail": keyword_detail},
+                "semantic_recall": {"score": round(semantic_score, 2), "weight": normalized_weights["semantic"], "detail": semantic_detail},
                 "source_bonus": source_bonus,
-                "final_formula": "rule*0.50 + keyword*0.25 + semantic*0.25 + source_bonus - hard_conflict_cap",
+                "final_formula": (
+                    f"rule*{normalized_weights['rule']:.2f} + "
+                    f"keyword*{normalized_weights['keyword']:.2f} + "
+                    f"semantic*{normalized_weights['semantic']:.2f} + source_bonus - hard_conflict_cap"
+                ),
             },
             "retrieval_channels": {
                 "rule": rule_reasons,
@@ -276,6 +295,19 @@ class JobService:
             "hard_constraint_status": "conflict" if hard_conflicts else ("clear" if evidence_coverage >= 50 else "unknown"),
             "hard_conflicts": list(dict.fromkeys(hard_conflicts)),
         }
+
+    @staticmethod
+    def _normalize_recommendation_weights(weights: Optional[dict[str, float]] = None) -> dict[str, float]:
+        """Normalize retrieval weights for offline experiments and safe defaults."""
+        raw = dict(DEFAULT_RECOMMENDATION_WEIGHTS)
+        if weights:
+            for key in ("rule", "keyword", "semantic"):
+                if key in weights:
+                    raw[key] = max(0.0, float(weights[key]))
+        total = sum(raw.values())
+        if total <= 0:
+            return dict(DEFAULT_RECOMMENDATION_WEIGHTS)
+        return {key: round(value / total, 4) for key, value in raw.items()}
 
     @classmethod
     def _rule_recall_score(
