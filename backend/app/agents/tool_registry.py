@@ -13,9 +13,11 @@ from app.agents.tools.career_tools import (
     build_company_verification_plan,
     generate_targeted_resume,
     inspect_profile_gaps,
+    query_real_company_registry,
     recommend_jobs_for_profile,
     recommend_learning_resources,
     search_job_database,
+    sync_beijing_official_jobs,
 )
 from app.agents.tools.company_evidence import search_company_info
 
@@ -229,6 +231,33 @@ class ToolRegistry:
             parameters=object_schema({"company_name": {"type": "string"}}, ["company_name"]),
             func=build_company_verification_plan,
             category="evidence",
+        ))
+        self.register(Tool(
+            name="query_real_company_registry",
+            description="调用已配置的真实企业工商/风险数据 API（企查查或阿里云市场），未配置时明确返回状态。",
+            parameters=object_schema({
+                "company_name": {"type": "string"},
+                "provider": {
+                    "type": "string",
+                    "enum": ["all", "qichacha", "aliyun"],
+                    "default": "all",
+                },
+            }, ["company_name"]),
+            func=query_real_company_registry,
+            category="external_api",
+        ))
+        self.register(Tool(
+            name="sync_beijing_official_jobs",
+            description="调用北京市公共数据开放平台岗位接口，返回真实岗位预览和计算机岗位过滤统计。",
+            parameters=object_schema({
+                "user_key": {"type": "string", "description": "北京市公共数据开放平台唯一标识码"},
+                "page_size": {"type": "integer", "default": 200},
+                "max_pages": {"type": "integer", "default": 3},
+            }, ["user_key"]),
+            func=sync_beijing_official_jobs,
+            category="external_api",
+            risk_level="medium",
+            expose_via_mcp=True,
         ))
         self.register(Tool(
             name="generate_targeted_resume",

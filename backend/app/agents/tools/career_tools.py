@@ -12,6 +12,8 @@ from sqlalchemy import or_
 
 from app.models.base import SessionLocal
 from app.models.job import Job
+from app.services.beijing_job_api_service import beijing_job_api_service
+from app.services.external_company_adapters import external_company_adapters
 
 
 LEARNING_RESOURCES = [
@@ -271,4 +273,48 @@ async def build_company_verification_plan(company_name: str) -> dict:
             },
         ],
         "policy": "查询可能涉及登录、验证码或主体消歧，必须由用户人工确认；未查询不等于没有风险。",
+    }
+
+
+async def sync_beijing_official_jobs(user_key: str, page_size: int = 200, max_pages: int = 3) -> dict:
+    """Fetch real Beijing open-data job records without persisting them.
+
+    Import/persistence is intentionally kept in the existing import script and
+    service.  This tool proves the live API connection and returns a sanitized
+    preview for Agent/MCP callers.
+    """
+    records = await beijing_job_api_service.fetch_all(
+        user_key,
+        page_size=max(1, min(int(page_size), 500)),
+        max_pages=max(1, min(int(max_pages), 20)),
+    )
+    computer_jobs, stats = beijing_job_api_service.filter_computer_jobs(records)
+    return {
+        "tool_name": "sync_beijing_official_jobs",
+        "status": "success",
+        "transport_used": beijing_job_api_service.transport_used,
+        "source_name": "北京市公共数据开放平台-单位招聘岗位信息",
+        "source_url": "https://data.beijing.gov.cn/",
+        "stats": stats,
+        "preview": computer_jobs[:10],
+        "policy": "真实接口读取结果仅返回预览；批量落库请使用 import_official_jobs 流程避免重复写入",
+    }
+
+
+async def query_real_company_registry(company_name: str, provider: str = "all") -> dict:
+    """Query configured real third-party company registry APIs."""
+    if provider not in {"all", "qichacha", "aliyun"}:
+        raise ValueError("provider 不受支持")
+    results = []
+    if provider in {"all", "qichacha"}:
+        results.append(await external_company_adapters.query_qichacha_company(company_name))
+    if provider in {"all", "aliyun"}:
+        results.append(await external_company_adapters.query_aliyun_company_api(company_name))
+    return {
+        "tool_name": "query_real_company_registry",
+        "status": "success" if any(item.get("status") == "success_with_results" for item in results) else "no_configured_or_no_results",
+        "company_name": company_name,
+        "provider": provider,
+        "items": results,
+        "policy": "只返回真实外部接口响应；未配置或上游失败会显式暴露状态，不使用 mock 数据",
     }

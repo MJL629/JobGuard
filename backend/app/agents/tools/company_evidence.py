@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 
 from app.models.base import SessionLocal
 from app.services.company_evidence_service import company_evidence_service
+from app.services.external_company_adapters import external_company_adapters
 from app.services.live_company_sources import live_company_sources
 
 if TYPE_CHECKING:
@@ -52,6 +53,9 @@ async def search_company_info(
     live_queries: list[dict] = []
     if query_type in {"all", "public_transactions"}:
         live_queries = await live_company_sources.lookup(company_name)
+    external_queries: list[dict] = []
+    if query_type in {"all", "basic"}:
+        external_queries = await external_company_adapters.lookup_company(company_name)
 
     owns_session = db is None
     session = db or SessionLocal()
@@ -92,7 +96,49 @@ async def search_company_info(
                             "structured_data": {},
                         },
                     )
-        if live_queries:
+        for external_result in external_queries:
+            if external_result.get("status") != "success_with_results":
+                continue
+            for record in external_result.get("records") or []:
+                structured = {
+                    "registration_status": record.get("Status")
+                    or record.get("status")
+                    or record.get("RegStatus")
+                    or record.get("registration_status"),
+                    "unified_social_credit_code": record.get("CreditCode")
+                    or record.get("creditCode")
+                    or record.get("No")
+                    or record.get("unified_social_credit_code"),
+                    "legal_representative": record.get("OperName")
+                    or record.get("legalPerson")
+                    or record.get("legal_representative"),
+                    "registered_capital": record.get("RegistCapi")
+                    or record.get("registeredCapital")
+                    or record.get("registered_capital"),
+                    "establishment_date": record.get("StartDate")
+                    or record.get("estiblishTime")
+                    or record.get("establishment_date"),
+                    "address": record.get("Address")
+                    or record.get("regLocation")
+                    or record.get("address"),
+                    "business_scope": record.get("Scope")
+                    or record.get("businessScope")
+                    or record.get("business_scope"),
+                }
+                company_evidence_service.add_evidence(
+                    session,
+                    {
+                        "company_name": record.get("Name") or record.get("name") or company_name,
+                        "evidence_type": "registry",
+                        "source_kind": "job_board",
+                        "source_name": external_result.get("source_name") or external_result["adapter"],
+                        "source_url": external_result.get("source_url") or "https://openapi.qcc.com/",
+                        "title": f"{company_name}企业工商信息",
+                        "content_excerpt": external_result.get("supports"),
+                        "structured_data": structured,
+                    },
+                )
+        if live_queries or external_queries:
             session.flush()
         summary = company_evidence_service.get_summary(session, company_name)
         if owns_session:
@@ -156,6 +202,7 @@ async def search_company_info(
         "sources": sources,
         "evidence": summary.get("evidence", []),
         "live_queries": live_queries,
+        "external_queries": external_queries,
         "adapters": [
             {
                 "name": "mysql_company_evidence",
@@ -166,6 +213,16 @@ async def search_company_info(
                 "name": "beijing_open_data",
                 "status": "available_via_import",
                 "description": "官方招聘 CSV 已导入；不证明工商、社保或仲裁风险",
+            },
+            {
+                "name": "qichacha_openapi",
+                "status": "configured" if external_company_adapters.qichacha_configured() else "not_configured",
+                "description": "真实企查查开放平台接口，配置 QICHACHA_APP_KEY/QICHACHA_SECRET_KEY 后启用",
+            },
+            {
+                "name": "aliyun_market_company_api",
+                "status": "configured" if external_company_adapters.aliyun_configured() else "not_configured",
+                "description": "真实阿里云市场企业数据接口，配置 AppCode 与接口 URL 后启用",
             },
             {
                 "name": "gsxt",

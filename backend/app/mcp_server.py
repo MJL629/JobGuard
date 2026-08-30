@@ -14,11 +14,14 @@ from __future__ import annotations
 
 from mcp.server.fastmcp import FastMCP
 
+from app.config import settings
 from app.agents.tools.career_tools import (
     analyze_job_requirements,
     build_company_verification_plan,
+    query_real_company_registry,
     recommend_learning_resources,
     search_job_database,
+    sync_beijing_official_jobs,
 )
 from app.agents.tools.company_evidence import search_company_info
 
@@ -83,6 +86,26 @@ async def mcp_build_company_verification_plan(company_name: str) -> dict:
 
 
 @jobguard_mcp.tool(
+    name="query_real_company_registry",
+    description="调用已配置的真实企业工商/风险数据 API；未配置时返回 not_configured，不返回 mock 数据。",
+)
+async def mcp_query_real_company_registry(company_name: str, provider: str = "all") -> dict:
+    return await query_real_company_registry(company_name=company_name, provider=provider)
+
+
+@jobguard_mcp.tool(
+    name="sync_beijing_official_jobs",
+    description="调用北京市公共数据开放平台岗位接口，返回真实岗位预览与计算机岗位过滤统计。",
+)
+async def mcp_sync_beijing_official_jobs(
+    user_key: str, page_size: int = 200, max_pages: int = 3
+) -> dict:
+    return await sync_beijing_official_jobs(
+        user_key=user_key, page_size=page_size, max_pages=max_pages
+    )
+
+
+@jobguard_mcp.tool(
     name="get_jobguard_tool_status",
     description="返回 JobGuard 工具适配器状态和真实性保护策略。",
 )
@@ -96,10 +119,14 @@ async def get_jobguard_tool_status() -> dict:
             "analyze_job_requirements",
             "recommend_learning_resources",
             "build_company_verification_plan",
+            "query_real_company_registry",
+            "sync_beijing_official_jobs",
         ],
         "adapters": {
             "mysql_company_evidence": "ready",
             "beijing_open_data": "available_via_import",
+            "qichacha_openapi": "configured" if settings.qichacha_app_key else "not_configured",
+            "aliyun_market_company_api": "configured" if settings.aliyun_company_appcode else "not_configured",
             "gsxt": "manual_handoff",
         },
         "policy": "缺少来源的企业事实返回 unknown，禁止模型补全",

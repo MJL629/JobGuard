@@ -16,6 +16,8 @@ async def test_mcp_server_exposes_real_company_tool():
         "analyze_job_requirements",
         "recommend_learning_resources",
         "build_company_verification_plan",
+        "query_real_company_registry",
+        "sync_beijing_official_jobs",
     }.issubset(names)
 
 
@@ -24,4 +26,5 @@ async def test_mcp_status_is_transparent_about_manual_gsxt():
     status = await get_jobguard_tool_status()
     assert status["status"] == "ready"
     assert status["adapters"]["gsxt"] == "manual_handoff"
+    assert "qichacha_openapi" in status["adapters"]
     assert "unknown" in status["policy"]

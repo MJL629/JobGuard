@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from typing import Any, Optional
 
 from app.agents.tool_registry import ToolRegistry, tool_registry
+from app.config import settings
 from app.llm.gateway import llm_gateway
 
 logger = logging.getLogger(__name__)
@@ -59,8 +60,16 @@ class Planner:
     支持根据执行反馈修订计划。
     """
 
-    def __init__(self, registry: Optional[ToolRegistry] = None):
+    def __init__(
+        self,
+        registry: Optional[ToolRegistry] = None,
+        *,
+        max_steps: int | None = None,
+        tool_timeout_seconds: float | None = None,
+    ):
         self.registry = registry or tool_registry
+        self.max_steps = max_steps or settings.agent_max_steps
+        self.tool_timeout_seconds = tool_timeout_seconds or settings.agent_tool_timeout_seconds
 
     async def create_plan(
         self,
@@ -306,6 +315,9 @@ class Executor:
         if not plan:
             logger.warning("[Executor] 计划为空，跳过执行")
             return []
+        if len(plan) > self.max_steps:
+            logger.warning("[Executor] 计划步骤过多，将从 %s 截断到 %s", len(plan), self.max_steps)
+            plan = sorted(plan, key=lambda item: item.step_id)[: self.max_steps]
 
         logger.info(f"[Executor] 开始执行计划，共 {len(plan)} 个步骤")
 
@@ -393,9 +405,15 @@ class Executor:
 
             # 调用工具函数（支持同步和异步）
             if asyncio.iscoroutinefunction(tool.func):
-                result = await tool.func(**resolved_args)
+                result = await asyncio.wait_for(
+                    tool.func(**resolved_args),
+                    timeout=self.tool_timeout_seconds,
+                )
             else:
-                result = tool.func(**resolved_args)
+                result = await asyncio.wait_for(
+                    asyncio.to_thread(tool.func, **resolved_args),
+                    timeout=self.tool_timeout_seconds,
+                )
 
             step.result = result
             step.status = "completed"

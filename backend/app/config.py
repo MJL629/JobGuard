@@ -59,6 +59,18 @@ class Settings(BaseSettings):
     langsmith_api_key: str = ""
     langsmith_project: str = "jobguard-local-evaluation"
 
+    # --- 真实外部数据接口（未配置时返回 not_configured，不使用 mock 伪装）---
+    qichacha_app_key: str = ""
+    qichacha_secret_key: str = ""
+    qichacha_base_url: str = "https://api.qichacha.com"
+    aliyun_company_appcode: str = ""
+    aliyun_company_query_url: str = ""
+    external_api_timeout_seconds: float = Field(default=10.0, ge=1.0, le=60.0)
+
+    # --- Agent 执行保护 ---
+    agent_max_steps: int = Field(default=6, ge=1, le=20)
+    agent_tool_timeout_seconds: float = Field(default=30.0, ge=1.0, le=300.0)
+
     # --- 数据库 ---
     mysql_host: str = "localhost"
     mysql_port: int = 3306
