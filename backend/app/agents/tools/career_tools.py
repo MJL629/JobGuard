@@ -75,6 +75,74 @@ async def inspect_profile_gaps(*, user_id: int) -> dict:
         db.close()
 
 
+async def get_user_profile_context(*, user_id: int) -> dict:
+    """Return structured profile context for Agent planning without raw resume text."""
+    from app.services.profile_service import profile_service
+
+    db = SessionLocal()
+    try:
+        profile = profile_service.get_full_profile(db, user_id)
+        basic = profile.get("basic") or {}
+        preferences = profile.get("preferences") or {}
+        return {
+            "tool_name": "get_user_profile_context",
+            "status": "success",
+            "user_id": user_id,
+            "basic": basic,
+            "preferences": preferences,
+            "skills": profile.get("skills") or [],
+            "projects": profile.get("projects") or [],
+            "experiences": profile.get("experiences") or [],
+            "education": profile.get("education") or [],
+            "resumes": [
+                {
+                    "id": item.get("id"),
+                    "original_name": item.get("original_name"),
+                    "is_primary": item.get("is_primary"),
+                    "parse_status": item.get("parse_status"),
+                    "extracted_chars": item.get("extracted_chars"),
+                    "created_at": item.get("created_at"),
+                }
+                for item in profile.get("resumes") or []
+            ],
+            "completeness": profile.get("completeness") or 0,
+            "memory_keys": sorted((profile.get("interview_memory") or {}).keys()),
+            "policy": "不返回 resume_raw_text；Agent 只读取结构化画像、项目、技能和偏好摘要",
+        }
+    finally:
+        db.close()
+
+
+async def save_user_memory(memory_type: str, content: str, *, user_id: int) -> dict:
+    """Persist an explicit user memory note into the profile memory map."""
+    from app.services.profile_service import profile_service
+
+    if memory_type not in {"preference", "skill", "project_note", "career_goal", "constraint"}:
+        raise ValueError("memory_type 不受支持")
+    text = str(content or "").strip()
+    if len(text) < 2:
+        raise ValueError("记忆内容不能为空")
+
+    db = SessionLocal()
+    try:
+        profile = profile_service.get_full_profile(db, user_id)
+        memory = dict(profile.get("interview_memory") or {})
+        entries = list(memory.get(memory_type) or [])
+        if text not in entries:
+            entries.append(text[:500])
+        memory[memory_type] = entries[-20:]
+        saved = profile_service.save_interview_memory(db, user_id, memory)
+        return {
+            "tool_name": "save_user_memory",
+            "status": "success",
+            "memory_type": memory_type,
+            "entry_count": len(saved.get(memory_type) or []),
+            "policy": "只保存用户明确表达的偏好、约束或目标，不根据模型猜测写入画像",
+        }
+    finally:
+        db.close()
+
+
 async def search_job_database(
     keywords: str = "", location: str = "", limit: int = 10, source_kind: str = "all"
 ) -> dict:
@@ -171,6 +239,68 @@ async def recommend_jobs_for_profile(*, user_id: int, limit: int = 10) -> dict:
             "profile_completeness": result.get("profile_completeness"),
             "scoring_version": result.get("scoring_version"),
             "items": result.get("items") or [],
+        }
+    finally:
+        db.close()
+
+
+async def search_job_knowledge_base(query: str, limit: int = 10) -> dict:
+    """Semantic search over the job vector KB."""
+    from app.rag.job_kb import job_kb
+
+    text = str(query or "").strip()
+    if len(text) < 2:
+        raise ValueError("检索 query 不能为空")
+    items = await job_kb.search(text, top_k=max(1, min(int(limit), 30)))
+    return {
+        "tool_name": "search_job_knowledge_base",
+        "status": "success",
+        "query": text[:200],
+        "count": len(items),
+        "items": items,
+        "policy": "语义召回只返回岗位向量库中的片段和 job_id，最终推荐仍需规则/关键词/风险融合排序",
+    }
+
+
+async def sync_job_kb_from_database(limit: int = 500) -> dict:
+    """Index active MySQL jobs into Chroma job_kb with semantic chunks."""
+    from app.rag.job_kb import job_kb
+
+    db = SessionLocal()
+    try:
+        safe_limit = max(1, min(int(limit), 2000))
+        jobs = (
+            db.query(Job)
+            .filter(Job.is_active == 1)
+            .order_by(Job.id.desc())
+            .limit(safe_limit)
+            .all()
+        )
+        payload = [
+            {
+                "id": item.id,
+                "company_name": item.company_name,
+                "job_title": item.job_title,
+                "job_category": item.job_category,
+                "sub_category": item.sub_category,
+                "salary_min": item.salary_min,
+                "salary_max": item.salary_max,
+                "location": item.location,
+                "requirements": item.requirements or [],
+                "benefits": item.benefits or [],
+                "jd_text": item.jd_text or "",
+                "source_type": item.source_type,
+            }
+            for item in jobs
+        ]
+        chunks = await job_kb.upsert_jobs(payload)
+        return {
+            "tool_name": "sync_job_kb_from_database",
+            "status": "success",
+            "job_count": len(payload),
+            "chunk_count": chunks,
+            "collection": "job_kb",
+            "policy": "MySQL 是岗位事实源，Chroma 只保存可重建的语义索引",
         }
     finally:
         db.close()

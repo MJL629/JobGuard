@@ -15,6 +15,7 @@ async def test_mcp_server_exposes_real_company_tool():
         "search_job_database",
         "analyze_job_requirements",
         "recommend_learning_resources",
+        "search_job_knowledge_base",
         "build_company_verification_plan",
         "query_real_company_registry",
         "sync_beijing_official_jobs",

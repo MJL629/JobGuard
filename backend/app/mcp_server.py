@@ -20,6 +20,7 @@ from app.agents.tools.career_tools import (
     build_company_verification_plan,
     query_real_company_registry,
     recommend_learning_resources,
+    search_job_knowledge_base,
     search_job_database,
     sync_beijing_official_jobs,
 )
@@ -78,6 +79,14 @@ async def mcp_recommend_learning_resources(topic: str = "", limit: int = 4) -> d
 
 
 @jobguard_mcp.tool(
+    name="search_job_knowledge_base",
+    description="从岗位向量知识库进行语义召回，返回岗位 chunk、job_id 和相似度。",
+)
+async def mcp_search_job_knowledge_base(query: str, limit: int = 10) -> dict:
+    return await search_job_knowledge_base(query=query, limit=limit)
+
+
+@jobguard_mcp.tool(
     name="build_company_verification_plan",
     description="为企业生成官方核验清单；需要登录或验证码的步骤保持人工执行。",
 )
@@ -118,6 +127,7 @@ async def get_jobguard_tool_status() -> dict:
             "search_job_database",
             "analyze_job_requirements",
             "recommend_learning_resources",
+            "search_job_knowledge_base",
             "build_company_verification_plan",
             "query_real_company_registry",
             "sync_beijing_official_jobs",

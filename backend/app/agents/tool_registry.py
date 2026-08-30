@@ -12,12 +12,16 @@ from app.agents.tools.career_tools import (
     analyze_job_requirements,
     build_company_verification_plan,
     generate_targeted_resume,
+    get_user_profile_context,
     inspect_profile_gaps,
     query_real_company_registry,
     recommend_jobs_for_profile,
     recommend_learning_resources,
+    save_user_memory,
     search_job_database,
+    search_job_knowledge_base,
     sync_beijing_official_jobs,
+    sync_job_kb_from_database,
 )
 from app.agents.tools.company_evidence import search_company_info
 
@@ -207,12 +211,61 @@ class ToolRegistry:
             expose_via_mcp=False,
         ))
         self.register(Tool(
+            name="get_user_profile_context",
+            description="读取当前登录用户的结构化画像上下文，不返回简历原文。",
+            parameters=object_schema({}),
+            func=get_user_profile_context,
+            category="profile",
+            inject_user_id=True,
+            expose_via_mcp=False,
+        ))
+        self.register(Tool(
+            name="save_user_memory",
+            description="保存用户明确表达的长期记忆，例如偏好、约束、目标或技能补充。",
+            parameters=object_schema({
+                "memory_type": {
+                    "type": "string",
+                    "enum": ["preference", "skill", "project_note", "career_goal", "constraint"],
+                },
+                "content": {"type": "string"},
+            }, ["memory_type", "content"]),
+            func=save_user_memory,
+            category="memory",
+            execution_mode="write",
+            risk_level="medium",
+            requires_confirmation=True,
+            inject_user_id=True,
+            expose_via_mcp=False,
+        ))
+        self.register(Tool(
             name="recommend_jobs_for_profile",
             description="用当前登录用户的持久化画像对真实岗位库进行可解释评分。",
             parameters=object_schema({"limit": {"type": "integer", "default": 10}}),
             func=recommend_jobs_for_profile,
             category="analyze",
             inject_user_id=True,
+            expose_via_mcp=False,
+        ))
+        self.register(Tool(
+            name="search_job_knowledge_base",
+            description="从岗位向量知识库进行语义召回，返回岗位片段、chunk 类型和相似度。",
+            parameters=object_schema({
+                "query": {"type": "string"},
+                "limit": {"type": "integer", "default": 10},
+            }, ["query"]),
+            func=search_job_knowledge_base,
+            category="rag",
+            expose_via_mcp=True,
+        ))
+        self.register(Tool(
+            name="sync_job_kb_from_database",
+            description="把 MySQL 有效岗位按语义切块同步到 Chroma 岗位向量库。",
+            parameters=object_schema({"limit": {"type": "integer", "default": 500}}),
+            func=sync_job_kb_from_database,
+            category="rag",
+            execution_mode="write",
+            risk_level="medium",
+            requires_confirmation=True,
             expose_via_mcp=False,
         ))
         self.register(Tool(

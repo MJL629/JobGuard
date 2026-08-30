@@ -8,6 +8,7 @@ Executor: 按依赖关系拓扑排序执行计划，并行执行无依赖步骤�
 import asyncio
 import json
 import logging
+import time
 from collections import deque
 from dataclasses import dataclass, field
 from typing import Any, Optional
@@ -15,6 +16,7 @@ from typing import Any, Optional
 from app.agents.tool_registry import ToolRegistry, tool_registry
 from app.config import settings
 from app.llm.gateway import llm_gateway
+from app.services.agent_observability_service import agent_observability_service
 
 logger = logging.getLogger(__name__)
 
@@ -60,16 +62,8 @@ class Planner:
     支持根据执行反馈修订计划。
     """
 
-    def __init__(
-        self,
-        registry: Optional[ToolRegistry] = None,
-        *,
-        max_steps: int | None = None,
-        tool_timeout_seconds: float | None = None,
-    ):
+    def __init__(self, registry: Optional[ToolRegistry] = None):
         self.registry = registry or tool_registry
-        self.max_steps = max_steps or settings.agent_max_steps
-        self.tool_timeout_seconds = tool_timeout_seconds or settings.agent_tool_timeout_seconds
 
     async def create_plan(
         self,
@@ -291,12 +285,25 @@ class Executor:
     如果某步骤失败，收集失败信息供 Planner 修订。
     """
 
-    def __init__(self, registry: Optional[ToolRegistry] = None):
+    def __init__(
+        self,
+        registry: Optional[ToolRegistry] = None,
+        *,
+        max_steps: int | None = None,
+        tool_timeout_seconds: float | None = None,
+    ):
         self.registry = registry or tool_registry
+        self.max_steps = max_steps or settings.agent_max_steps
+        self.tool_timeout_seconds = tool_timeout_seconds or settings.agent_tool_timeout_seconds
 
     async def execute(
         self,
         plan: list[PlanStep],
+        *,
+        db: Any | None = None,
+        run: Any | None = None,
+        user_id: int | None = None,
+        confirmed: bool = False,
     ) -> list[PlanStep]:
         """
         按依赖关系执行计划。
@@ -369,7 +376,17 @@ class Executor:
             logger.info(f"[Executor] 并行执行 {len(ready)} 个步骤: {[s.step_id for s in ready]}")
 
             # 并行执行
-            tasks = [self._execute_step(step, step_map) for step in ready]
+            tasks = [
+                self._execute_step(
+                    step,
+                    step_map,
+                    db=db,
+                    run=run,
+                    user_id=user_id,
+                    confirmed=confirmed,
+                )
+                for step in ready
+            ]
             await asyncio.gather(*tasks, return_exceptions=True)
 
             # 更新完成和失败集合
@@ -383,7 +400,16 @@ class Executor:
         self._log_summary(plan)
         return plan
 
-    async def _execute_step(self, step: PlanStep, step_map: dict[int, PlanStep]) -> None:
+    async def _execute_step(
+        self,
+        step: PlanStep,
+        step_map: dict[int, PlanStep],
+        *,
+        db: Any | None = None,
+        run: Any | None = None,
+        user_id: int | None = None,
+        confirmed: bool = False,
+    ) -> None:
         """
         执行单个步骤。
 
@@ -391,6 +417,7 @@ class Executor:
         """
         step.status = "running"
         logger.info(f"[Executor] Step {step.step_id}: 开始执行 {step.tool_name}")
+        started_at = time.perf_counter()
 
         try:
             tool = self.registry.get(step.tool_name)
@@ -403,16 +430,25 @@ class Executor:
             # 解析参数中的依赖引用
             resolved_args = self._resolve_args(step.tool_args, step_map)
 
-            # 调用工具函数（支持同步和异步）
-            if asyncio.iscoroutinefunction(tool.func):
-                result = await asyncio.wait_for(
-                    tool.func(**resolved_args),
-                    timeout=self.tool_timeout_seconds,
-                )
-            else:
-                result = await asyncio.wait_for(
-                    asyncio.to_thread(tool.func, **resolved_args),
-                    timeout=self.tool_timeout_seconds,
+            result = await asyncio.wait_for(
+                self.registry.execute(
+                    step.tool_name,
+                    resolved_args,
+                    user_id=user_id,
+                    confirmed=confirmed,
+                ),
+                timeout=self.tool_timeout_seconds,
+            )
+            if db is not None and run is not None:
+                agent_observability_service.record_tool_call(
+                    db,
+                    run=run,
+                    tool_name=step.tool_name,
+                    arguments=resolved_args,
+                    result=result,
+                    started_at=started_at,
+                    requires_confirmation=tool.requires_confirmation,
+                    confirmed=confirmed,
                 )
 
             step.result = result
@@ -422,6 +458,19 @@ class Executor:
         except Exception as e:
             step.status = "failed"
             step.error = str(e)
+            if db is not None and run is not None:
+                tool = self.registry.get(step.tool_name)
+                agent_observability_service.record_tool_call(
+                    db,
+                    run=run,
+                    tool_name=step.tool_name,
+                    arguments=step.tool_args,
+                    result={},
+                    started_at=started_at,
+                    requires_confirmation=bool(tool and tool.requires_confirmation),
+                    confirmed=confirmed,
+                    error=e,
+                )
             logger.error(f"[Executor] Step {step.step_id} 执行失败: {e}")
 
     def _resolve_args(self, args: dict, step_map: dict[int, PlanStep]) -> dict:

@@ -6,11 +6,14 @@ from app.agents.tool_registry import tool_registry
 def test_every_exposed_tool_has_real_callable_and_safety_metadata():
     tools = tool_registry.list_available()
 
-    assert len(tools) >= 8
+    assert len(tools) >= 13
     assert all(callable(item.func) for item in tools)
     assert all(item.execution_mode in {"read_only", "write"} for item in tools)
     assert tool_registry.get("generate_targeted_resume").requires_confirmation is True
+    assert tool_registry.get("save_user_memory").requires_confirmation is True
+    assert tool_registry.get("sync_job_kb_from_database").requires_confirmation is True
     assert tool_registry.get("inspect_profile_gaps").expose_via_mcp is False
+    assert tool_registry.get("search_job_knowledge_base").expose_via_mcp is True
 
 
 @pytest.mark.asyncio
@@ -50,3 +53,24 @@ async def test_tool_schema_rejects_unknown_arguments():
             "recommend_learning_resources", {"topic": "RAG", "cookie": "secret"}
         )
 
+
+@pytest.mark.asyncio
+async def test_memory_write_tool_requires_confirmation(monkeypatch):
+    tool = tool_registry.get("save_user_memory")
+    called = False
+
+    async def should_not_run(**kwargs):
+        nonlocal called
+        called = True
+        return {"status": "success"}
+
+    monkeypatch.setattr(tool, "func", should_not_run)
+    result = await tool_registry.execute(
+        "save_user_memory",
+        {"memory_type": "preference", "content": "不接受 996"},
+        user_id=7,
+        confirmed=False,
+    )
+
+    assert result["status"] == "confirmation_required"
+    assert called is False

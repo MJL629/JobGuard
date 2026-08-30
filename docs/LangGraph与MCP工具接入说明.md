@@ -32,18 +32,26 @@ cd E:\jobguard\jobguard\backend
 .\.venv\Scripts\python.exe -m app.mcp_server
 ```
 
-当前暴露 8 个工具：
+当前工具注册中心覆盖 13+ 个工具，其中部分安全工具通过 MCP 暴露：
 
 - `search_company_info`：读取已落库企业证据、核验状态和来源链接。
 - `search_job_database`：检索 MySQL 中有效岗位并保留来源。
 - `analyze_job_requirements`：对数据库岗位做结构化要求分析。
+- `get_user_profile_context`：读取当前登录用户结构化画像，不返回简历原文。
+- `recommend_jobs_for_profile`：基于用户画像对岗位库做规则、关键词、语义融合推荐。
+- `save_user_memory`：把用户明确确认的偏好、约束或目标写入长期记忆，执行前需要确认。
+- `generate_targeted_resume`：根据画像与目标岗位生成定向简历并持久化，执行前需要确认。
 - `recommend_learning_resources`：返回按技能筛选的可核验学习资源。
+- `search_job_knowledge_base`：从 Chroma 岗位向量库召回语义相关 chunk。
+- `sync_job_kb_from_database`：将 MySQL 岗位按语义切块同步到 Chroma，执行前需要确认。
 - `build_company_verification_plan`：生成官方入口和人工核验步骤。
 - `query_real_company_registry`：调用已配置的真实企业工商/风险数据接口，支持企查查开放平台和阿里云市场企业数据 API。
 - `sync_beijing_official_jobs`：调用北京市公共数据开放平台岗位接口，返回真实岗位预览与计算机岗位过滤统计。
 - `get_jobguard_tool_status`：返回适配器状态与真实性保护策略。
 
-应用内 Agent 与 MCP 服务复用同一个 `search_company_info` 实现，因此不是 Codex 临时替用户查一次，也不是把浏览器登录态塞入代码。缺少来源时必须返回 `unknown/no_evidence`，不能用模型记忆补充社保人数、仲裁数量或公司口碑。
+应用内 Agent 与 MCP 服务复用同一套工具函数，因此不是 Codex 临时替用户查一次，也不是把浏览器登录态塞入代码。缺少来源时必须返回 `unknown/no_evidence`，不能用模型记忆补充社保人数、仲裁数量或公司口碑。
+
+登录后的 `POST /api/agent/plan-execute` 提供统一 Plan-and-Execute 调试入口：Planner 生成工具计划，Executor 统一通过 ToolRegistry 执行，执行过程写入 `agent_runs` 和 `tool_call_traces`。这个接口适合调试“用户目标 → 工具计划 → 每步执行结果”的完整链路。
 
 ## 真实外部接口 Adapter
 

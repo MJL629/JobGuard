@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.agents.tool_registry import tool_registry
+from app.agents.planner import Executor, Planner
 from app.auth import get_current_user_id
 from app.graph.builder import get_jobguard_graph
 from app.models.agent_run import AgentRun
@@ -19,6 +20,12 @@ router = APIRouter()
 
 class ExecuteToolRequest(BaseModel):
     arguments: dict = Field(default_factory=dict)
+    confirmed: bool = False
+
+
+class PlanExecuteRequest(BaseModel):
+    message: str = Field(..., min_length=1, max_length=4000)
+    context: dict = Field(default_factory=dict)
     confirmed: bool = False
 
 
@@ -140,6 +147,84 @@ async def execute_agent_tool(
         )
         agent_observability_service.fail_run(db, run, "tool_execution", exc)
         raise HTTPException(status_code=500, detail="工具执行失败，请查看 Agent 运行记录") from exc
+
+
+@router.post("/plan-execute")
+async def plan_and_execute(
+    req: PlanExecuteRequest,
+    current_user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    """Plan-and-Execute entrypoint for interview-grade Agent debugging."""
+    run = agent_observability_service.start_run(
+        db,
+        user_id=current_user_id,
+        session_id=None,
+        workflow="plan_execute",
+        intent=None,
+        input_summary=req.message[:500],
+        context_snapshot={
+            "execution_mode": "plan_and_execute_with_limited_tool_calls",
+            "confirmed": req.confirmed,
+        },
+    )
+    try:
+        agent_observability_service.update_step(db, run, "planning")
+        planner = Planner()
+        plan = await planner.create_plan(
+            req.message,
+            context={
+                **(req.context or {}),
+                "authenticated_user_id": current_user_id,
+                "tool_policy": "工具写入必须 confirmed=true；敏感参数不会进入 trace 明文",
+            },
+        )
+        agent_observability_service.update_step(db, run, "executing")
+        executed = await Executor().execute(
+            plan,
+            db=db,
+            run=run,
+            user_id=current_user_id,
+            confirmed=req.confirmed,
+        )
+        failed = [step for step in executed if step.status == "failed"]
+        summary = {
+            "steps_total": len(executed),
+            "steps_completed": sum(1 for step in executed if step.status == "completed"),
+            "steps_failed": len(failed),
+        }
+        if failed:
+            agent_observability_service.fail_run(
+                db,
+                run,
+                failed[0].tool_name,
+                RuntimeError(failed[0].error or "工具执行失败"),
+            )
+        else:
+            agent_observability_service.complete_run(db, run, f"steps={summary['steps_completed']}")
+        return {
+            "code": 0 if not failed else 1,
+            "data": {
+                "run_id": run.id,
+                "execution_mode": "Plan-and-Execute + limited tool execution",
+                "summary": summary,
+                "plan": [
+                    {
+                        "step_id": step.step_id,
+                        "tool_name": step.tool_name,
+                        "description": step.description,
+                        "depends_on": step.depends_on,
+                        "status": step.status,
+                        "error": step.error,
+                        "result": agent_observability_service.redact(step.result),
+                    }
+                    for step in executed
+                ],
+            },
+        }
+    except Exception as exc:
+        agent_observability_service.fail_run(db, run, "plan_execute", exc)
+        raise HTTPException(status_code=500, detail="Plan-and-Execute 执行失败，请查看 Agent 运行记录") from exc
 
 
 @router.get("/runs")
