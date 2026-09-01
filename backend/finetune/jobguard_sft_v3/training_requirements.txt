@@ -1,7 +1,7 @@
-torch
-transformers>=4.45.0
-datasets>=2.20.0
-peft>=0.12.0
-accelerate>=0.33.0
-trl>=0.9.6
-bitsandbytes>=0.43.0; platform_system != "Windows"
+torch>=2.4.0,<2.6.0
+transformers==4.46.3
+datasets==3.2.0
+peft==0.13.2
+accelerate==1.0.1
+trl==0.11.4
+bitsandbytes==0.45.0; platform_system != "Windows"
