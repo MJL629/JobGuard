@@ -1,0 +1,72 @@
+{
+  "experiment": "jobguard_sft_v3_multitask_lora_full_r16",
+  "run_date": "2026-09-01",
+  "server": {
+    "gpu": "NVIDIA GeForce RTX 4080 SUPER",
+    "gpu_memory_total_mib": 32760,
+    "base_model": "/root/autodl-tmp/models/Qwen2.5-7B-Instruct",
+    "adapter_output_dir": "/root/autodl-tmp/jobguard_sft_v3_outputs/full_r16"
+  },
+  "training": {
+    "train_examples": 1400,
+    "validation_examples": 300,
+    "epochs": 2,
+    "steps": 350,
+    "train_runtime_seconds": 873.2347,
+    "train_loss": 0.5675853211539132,
+    "eval_loss": 1.4770442247390747
+  },
+  "test_eval": {
+    "samples": 300,
+    "json_success": 1.0,
+    "required_field_success": 1.0,
+    "field_accuracy": 0.939821,
+    "skill_precision": 0.943426,
+    "skill_recall": 0.939658,
+    "skill_f1": 0.935783,
+    "risk_precision": 0.873333,
+    "risk_recall": 0.873333,
+    "risk_f1": 0.873333,
+    "missing_predictions": 0
+  },
+  "by_task": {
+    "jd_extract": {
+      "samples": 75,
+      "json_success": 1.0,
+      "required_field_success": 1.0,
+      "field_accuracy": 0.945952,
+      "skill_f1": 0.878031,
+      "risk_f1": 0.72
+    },
+    "job_classify": {
+      "samples": 75,
+      "json_success": 1.0,
+      "required_field_success": 1.0,
+      "field_accuracy": 0.853333
+    },
+    "risk_label": {
+      "samples": 75,
+      "json_success": 1.0,
+      "required_field_success": 1.0,
+      "field_accuracy": 0.96,
+      "risk_f1": 0.773333
+    },
+    "skill_normalize": {
+      "samples": 75,
+      "json_success": 1.0,
+      "required_field_success": 1.0,
+      "skill_f1": 0.865101
+    }
+  },
+  "artifacts_on_gpu_server": {
+    "train_log": "/root/autodl-tmp/jobguard_sft_v3_outputs/full_r16/train.log",
+    "eval_metrics": "/root/autodl-tmp/jobguard_sft_v3_outputs/full_r16/eval_metrics.json",
+    "test_predictions": "/root/autodl-tmp/jobguard_sft_v3_outputs/full_r16/test_predictions.jsonl",
+    "test_eval": "/root/autodl-tmp/jobguard_sft_v3_outputs/full_r16/test_eval.json"
+  },
+  "notes": [
+    "This run uses the JobGuard SFT v3 silver/gold mixed dataset and evaluates against the held-out test split.",
+    "Metrics are automatic schema/field/list-overlap metrics, not a human preference evaluation.",
+    "The adapter artifact is stored on the GPU data disk and is not committed to Git because it is a generated model artifact."
+  ]
+}
