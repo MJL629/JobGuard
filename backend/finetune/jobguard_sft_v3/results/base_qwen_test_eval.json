@@ -1,0 +1,63 @@
+{
+  "experiment": "jobguard_sft_v3_base_qwen_baseline",
+  "run_date": "2026-09-01",
+  "server": {
+    "gpu": "NVIDIA GeForce RTX 4080 SUPER",
+    "gpu_memory_total_mib": 32760,
+    "base_model": "/root/autodl-tmp/models/Qwen2.5-7B-Instruct",
+    "code_dir": "/root/autodl-tmp/jobguard-latest"
+  },
+  "test_eval": {
+    "samples": 300,
+    "json_success": 0.996667,
+    "required_field_success": 0.0,
+    "field_accuracy": 0.279716,
+    "skill_precision": 0.906667,
+    "skill_recall": 0.906667,
+    "skill_f1": 0.906667,
+    "risk_precision": 0.876667,
+    "risk_recall": 0.876667,
+    "risk_f1": 0.876667,
+    "missing_predictions": 0
+  },
+  "by_task": {
+    "jd_extract": {
+      "samples": 75,
+      "json_success": 0.986667,
+      "required_field_success": 0.0,
+      "field_accuracy": 0.118862,
+      "skill_f1": 0.813333,
+      "risk_f1": 0.746667
+    },
+    "job_classify": {
+      "samples": 75,
+      "json_success": 1.0,
+      "required_field_success": 0.0,
+      "field_accuracy": 0.0
+    },
+    "risk_label": {
+      "samples": 75,
+      "json_success": 1.0,
+      "required_field_success": 0.0,
+      "field_accuracy": 0.0,
+      "risk_f1": 0.76
+    },
+    "skill_normalize": {
+      "samples": 75,
+      "json_success": 1.0,
+      "required_field_success": 0.0,
+      "skill_f1": 0.813333
+    }
+  },
+  "artifacts_on_gpu_server": {
+    "test_predictions": "/root/autodl-tmp/jobguard_sft_v3_outputs/base_qwen/test_predictions.jsonl",
+    "test_eval": "/root/autodl-tmp/jobguard_sft_v3_outputs/base_qwen/test_eval.json",
+    "comparison_md": "/root/autodl-tmp/jobguard_sft_v3_outputs/baseline_comparison_base_vs_sft.md",
+    "comparison_csv": "/root/autodl-tmp/jobguard_sft_v3_outputs/baseline_comparison_base_vs_sft.csv"
+  },
+  "notes": [
+    "Base Qwen can mostly produce valid JSON, but it does not consistently follow the JobGuard schema field names.",
+    "This explains the low required-field success and field accuracy compared with the SFT r16 adapter.",
+    "Skill/risk F1 remain relatively high because list-overlap metrics are less sensitive to schema field naming than required-field checks."
+  ]
+}
