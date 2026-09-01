@@ -84,6 +84,12 @@ def main() -> None:
     parser.add_argument("--limit", type=int, default=None, help="Optional sample limit for smoke runs.")
     parser.add_argument("--max-new-tokens", type=int, default=512)
     parser.add_argument("--temperature", type=float, default=0.0)
+    parser.add_argument(
+        "--device",
+        choices=["auto", "cuda", "cpu"],
+        default="auto",
+        help="Use 'cuda' for single-GPU inference without accelerate; use 'auto' for device_map=auto.",
+    )
     args = parser.parse_args()
 
     data_path = Path(args.data)
@@ -91,12 +97,26 @@ def main() -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     tokenizer = AutoTokenizer.from_pretrained(args.base_model, trust_remote_code=True)
-    model = AutoModelForCausalLM.from_pretrained(
-        args.base_model,
-        torch_dtype=torch.bfloat16 if torch.cuda.is_available() else torch.float32,
-        device_map="auto",
-        trust_remote_code=True,
-    )
+    torch_dtype = torch.bfloat16 if torch.cuda.is_available() else torch.float32
+    if args.device == "auto":
+        model = AutoModelForCausalLM.from_pretrained(
+            args.base_model,
+            torch_dtype=torch_dtype,
+            device_map="auto",
+            trust_remote_code=True,
+        )
+    else:
+        model = AutoModelForCausalLM.from_pretrained(
+            args.base_model,
+            torch_dtype=torch_dtype,
+            trust_remote_code=True,
+        )
+        if args.device == "cuda":
+            if not torch.cuda.is_available():
+                raise SystemExit("CUDA is not available, cannot use --device cuda")
+            model = model.to("cuda")
+        else:
+            model = model.to("cpu")
 
     if args.adapter:
         from peft import PeftModel
