@@ -1,0 +1,2 @@
+﻿run,samples,json_success,required_field_success,field_accuracy,skill_f1,risk_f1,missing_predictions,path
+sft_r16,300,1.0,1.0,0.939821,0.935783,0.873333,0,backend\finetune\jobguard_sft_v3\results\full_r16_test_eval.json

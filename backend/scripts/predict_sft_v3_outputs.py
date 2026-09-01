@@ -107,7 +107,7 @@ def main() -> None:
     samples = load_jsonl(data_path, args.limit)
 
     with output_path.open("w", encoding="utf-8") as out:
-        for sample in samples:
+        for index, sample in enumerate(samples, start=1):
             prompt = build_prompt(sample, tokenizer)
             inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
             generation_kwargs: dict[str, Any] = {
@@ -137,6 +137,8 @@ def main() -> None:
                 )
                 + "\n"
             )
+            if index == 1 or index % 25 == 0 or index == len(samples):
+                print(f"Generated {index}/{len(samples)} predictions")
 
     print(f"Wrote {len(samples)} predictions to {output_path}")
 

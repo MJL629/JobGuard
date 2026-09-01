@@ -96,10 +96,92 @@ python backend/scripts/eval_sft_v3_outputs.py \
 
 评估指标包括 JSON 合法率、必需字段覆盖率、字段准确率、Skill Precision/Recall/F1 和 Risk Precision/Recall/F1。
 
+## 已完成实验：Qwen2.5-7B LoRA SFT r=16
+
+2026-09-01 在 AutoDL GPU 环境完成 r=16 LoRA SFT：
+
+- 训练样本：1400
+- 验证样本：300
+- 测试样本：300
+- 训练 epoch：2
+- 训练步数：350
+- 训练耗时：873.23 秒
+- train loss：0.5676
+- eval loss：1.4770
+
+测试集自动评估结果见：
+
+```text
+backend/finetune/jobguard_sft_v3/results/full_r16_test_eval.json
+```
+
+核心结果：
+
+- JSON 合法率：100%
+- 必填字段成功率：100%
+- 字段准确率：93.98%
+- Skill F1：93.58%
+- Risk F1：87.33%
+
+注意：该实验说明 SFT 模型在 JobGuard 自建结构化任务上具备稳定输出能力；仍需要 Base Qwen、DeepSeek/GLM 等基线对照来证明“相对提升”。
+
+## 下一步：基线对比实验
+
+### 1. GPU 上跑 Base Qwen 对照
+
+如果服务器已有模型：
+
+```bash
+cd /root/autodl-tmp/jobguard-current
+
+python backend/scripts/predict_sft_v3_outputs.py \
+  --base-model /root/autodl-tmp/models/Qwen2.5-7B-Instruct \
+  --data backend/finetune/jobguard_sft_v3/dataset/test.jsonl \
+  --output /root/autodl-tmp/jobguard_sft_v3_outputs/base_qwen/test_predictions.jsonl \
+  --max-new-tokens 256
+
+python backend/scripts/eval_sft_v3_outputs.py \
+  --data backend/finetune/jobguard_sft_v3/dataset/test.jsonl \
+  --predictions /root/autodl-tmp/jobguard_sft_v3_outputs/base_qwen/test_predictions.jsonl \
+  --output /root/autodl-tmp/jobguard_sft_v3_outputs/base_qwen/test_eval.json
+```
+
+### 2. API 上跑商业模型对照
+
+以 DeepSeek 为例：
+
+```bash
+cd /root/autodl-tmp/jobguard-current
+export DEEPSEEK_API_KEY="你的真实 Key"
+
+python backend/scripts/predict_sft_v3_api.py \
+  --provider deepseek \
+  --model deepseek-chat \
+  --data backend/finetune/jobguard_sft_v3/dataset/test.jsonl \
+  --output /root/autodl-tmp/jobguard_sft_v3_outputs/deepseek/test_predictions.jsonl \
+  --max-tokens 256
+
+python backend/scripts/eval_sft_v3_outputs.py \
+  --data backend/finetune/jobguard_sft_v3/dataset/test.jsonl \
+  --predictions /root/autodl-tmp/jobguard_sft_v3_outputs/deepseek/test_predictions.jsonl \
+  --output /root/autodl-tmp/jobguard_sft_v3_outputs/deepseek/test_eval.json
+```
+
+### 3. 生成横向对比表
+
+```bash
+python backend/scripts/summarize_sft_v3_baselines.py \
+  --run base_qwen=/root/autodl-tmp/jobguard_sft_v3_outputs/base_qwen/test_eval.json \
+  --run sft_r16=/root/autodl-tmp/jobguard_sft_v3_outputs/full_r16/test_eval.json \
+  --run deepseek=/root/autodl-tmp/jobguard_sft_v3_outputs/deepseek/test_eval.json \
+  --output-md /root/autodl-tmp/jobguard_sft_v3_outputs/baseline_comparison.md \
+  --output-csv /root/autodl-tmp/jobguard_sft_v3_outputs/baseline_comparison.csv
+```
+
 ## 简历口径
 
 当前可以说：
 
-> 构建 JobGuard 领域多任务 SFT v3 数据集，基于 500 条 JD 生成 2000 条训练样本，覆盖 JD 抽取、岗位分类、风险话术识别和技能标准化；采用 70/15/15 划分，并输出 100 条高优先级人工复核候选，配套 JSON 合法率、字段覆盖率、Skill F1 与 Risk F1 评估脚本，为后续提升结构化抽取和风险识别能力提供数据基础。
+> 构建 JobGuard 领域多任务 SFT v3 数据集，基于 500 条 JD 生成 2000 条训练样本，覆盖 JD 抽取、岗位分类、风险话术识别和技能标准化；采用 70/15/15 划分，基于 Qwen2.5-7B 完成 LoRA SFT r=16 训练，在 300 条测试集上实现 JSON 合法率 100%、必填字段成功率 100%、字段准确率 93.98%、Skill F1 93.58%、Risk F1 87.33%，形成“数据构造—训练—预测—自动评估”的后训练实验闭环。
 
-在人工复核和训练完成前，不建议写“显著提升准确率”。
+在 Base Qwen 和商业 API 基线对照完成前，不建议写“显著优于某模型”。
