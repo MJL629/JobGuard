@@ -37,7 +37,17 @@ def load_jsonl(path: Path, limit: int | None = None) -> list[dict[str, Any]]:
     return rows
 
 
-def build_prompt(sample: dict[str, Any]) -> str:
+def build_prompt(sample: dict[str, Any], tokenizer) -> str:
+    messages = sample.get("messages") or []
+    if len(messages) >= 2:
+        prompt_messages = [message for message in messages if message.get("role") != "assistant"]
+        if hasattr(tokenizer, "apply_chat_template"):
+            return tokenizer.apply_chat_template(
+                prompt_messages,
+                tokenize=False,
+                add_generation_prompt=True,
+            )
+
     instruction = sample.get("instruction") or ""
     input_text = sample.get("input") or ""
     return (
@@ -98,7 +108,7 @@ def main() -> None:
 
     with output_path.open("w", encoding="utf-8") as out:
         for sample in samples:
-            prompt = build_prompt(sample)
+            prompt = build_prompt(sample, tokenizer)
             inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
             generation_kwargs: dict[str, Any] = {
                 "max_new_tokens": args.max_new_tokens,
@@ -120,7 +130,8 @@ def main() -> None:
                         "task": sample.get("task"),
                         "prediction": normalize_prediction(raw_prediction),
                         "raw_prediction": raw_prediction.strip(),
-                        "gold": sample.get("output"),
+                        "gold": sample.get("output")
+                        or ((sample.get("messages") or [{}])[-1].get("content")),
                     },
                     ensure_ascii=False,
                 )
