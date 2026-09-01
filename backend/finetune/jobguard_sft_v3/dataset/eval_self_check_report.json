@@ -1,0 +1,69 @@
+{
+  "dataset": "E:\\jobguard\\jobguard\\backend\\finetune\\jobguard_sft_v3\\dataset\\test.jsonl",
+  "prediction_file": null,
+  "self_check": true,
+  "overall": {
+    "samples": 300,
+    "json_success": 1.0,
+    "required_field_success": 1.0,
+    "field_accuracy": 1.0,
+    "skill_precision": 1.0,
+    "skill_recall": 1.0,
+    "skill_f1": 1.0,
+    "risk_precision": 1.0,
+    "risk_recall": 1.0,
+    "risk_f1": 1.0
+  },
+  "by_task": {
+    "jd_extract": {
+      "samples": 75,
+      "json_success": 1.0,
+      "required_field_success": 1.0,
+      "field_accuracy": 1.0,
+      "skill_precision": 1.0,
+      "skill_recall": 1.0,
+      "skill_f1": 1.0,
+      "risk_precision": 1.0,
+      "risk_recall": 1.0,
+      "risk_f1": 1.0
+    },
+    "job_classify": {
+      "samples": 75,
+      "json_success": 1.0,
+      "required_field_success": 1.0,
+      "field_accuracy": 1.0,
+      "skill_precision": 1.0,
+      "skill_recall": 1.0,
+      "skill_f1": 1.0,
+      "risk_precision": 1.0,
+      "risk_recall": 1.0,
+      "risk_f1": 1.0
+    },
+    "risk_label": {
+      "samples": 75,
+      "json_success": 1.0,
+      "required_field_success": 1.0,
+      "field_accuracy": 1.0,
+      "skill_precision": 1.0,
+      "skill_recall": 1.0,
+      "skill_f1": 1.0,
+      "risk_precision": 1.0,
+      "risk_recall": 1.0,
+      "risk_f1": 1.0
+    },
+    "skill_normalize": {
+      "samples": 75,
+      "json_success": 1.0,
+      "required_field_success": 1.0,
+      "field_accuracy": 1.0,
+      "skill_precision": 1.0,
+      "skill_recall": 1.0,
+      "skill_f1": 1.0,
+      "risk_precision": 1.0,
+      "risk_recall": 1.0,
+      "risk_f1": 1.0
+    }
+  },
+  "missing_predictions": 0,
+  "missing_prediction_ids_preview": []
+}

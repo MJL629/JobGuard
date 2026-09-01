@@ -34,14 +34,22 @@ backend\.venv\Scripts\python.exe backend\scripts\validate_sft_v3_dataset.py
 - `dataset/val.jsonl`
 - `dataset/test.jsonl`
 - `dataset/gold_review_candidates.jsonl`
+- `dataset/gold_review_sheet.csv`
 - `dataset/manifest.json`
 - `dataset/validation_report.json`
+- `dataset/eval_self_check_report.json`
 
 当前版本为 500 条 JD、2000 条 SFT 样本，训练/验证/测试为 1400/300/300。
 
+数据集校验结果：
+
+- assistant JSON 合法率：100%
+- 必需字段覆盖率：100%
+- 测试集 self-check：300/300 样本通过。注意 self-check 只说明评估脚本和标签格式一致，不代表模型效果。
+
 ## 人工参与点
 
-下一步需要人工参与的是 `dataset/gold_review_candidates.jsonl`。建议先复核 100 条候选样本，重点检查：
+下一步需要人工参与的是 `dataset/gold_review_sheet.csv`。建议先复核 100 条候选样本，重点检查：
 
 - 岗位类别和细分方向是否合理；
 - 技能标签是否漏标或误标；
@@ -51,10 +59,47 @@ backend\.venv\Scripts\python.exe backend\scripts\validate_sft_v3_dataset.py
 
 复核完成后，可把 `label_quality` 从 `silver_rule` 升级为 `gold_human_reviewed`，再训练正式 SFT v3。
 
+## 训练与评估入口
+
+GPU 服务器安装训练依赖：
+
+```bash
+pip install -r backend/finetune/jobguard_sft_v3/training_requirements.txt
+```
+
+先跑 smoke：
+
+```bash
+python backend/scripts/train_sft_v3_lora.py --smoke
+```
+
+正式训练默认配置见：
+
+```text
+backend/finetune/jobguard_sft_v3/sft_lora_config.json
+```
+
+模型预测文件可用如下格式保存：
+
+```json
+{"id":"sftv3_xxx","prediction":"{\"job_category\":\"技术\"}"}
+```
+
+评估：
+
+```bash
+python backend/scripts/eval_sft_v3_outputs.py \
+  --data backend/finetune/jobguard_sft_v3/dataset/test.jsonl \
+  --predictions backend/finetune/jobguard_sft_v3/output/predictions.jsonl \
+  --output backend/finetune/jobguard_sft_v3/output/eval_report.json
+```
+
+评估指标包括 JSON 合法率、必需字段覆盖率、字段准确率、Skill Precision/Recall/F1 和 Risk Precision/Recall/F1。
+
 ## 简历口径
 
 当前可以说：
 
-> 构建 JobGuard 领域多任务 SFT v3 数据集，基于 500 条 JD 生成 2000 条训练样本，覆盖 JD 抽取、岗位分类、风险话术识别和技能标准化；采用 70/15/15 划分，并输出 100 条高优先级 gold 复核候选，为后续提升结构化抽取和风险识别能力提供数据基础。
+> 构建 JobGuard 领域多任务 SFT v3 数据集，基于 500 条 JD 生成 2000 条训练样本，覆盖 JD 抽取、岗位分类、风险话术识别和技能标准化；采用 70/15/15 划分，并输出 100 条高优先级人工复核候选，配套 JSON 合法率、字段覆盖率、Skill F1 与 Risk F1 评估脚本，为后续提升结构化抽取和风险识别能力提供数据基础。
 
 在人工复核和训练完成前，不建议写“显著提升准确率”。
