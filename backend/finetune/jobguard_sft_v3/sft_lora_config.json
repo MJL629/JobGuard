@@ -1,0 +1,36 @@
+{
+  "experiment_name": "jobguard_sft_v3_multitask_lora",
+  "base_model": "Qwen/Qwen2.5-7B-Instruct",
+  "dataset_dir": "backend/finetune/jobguard_sft_v3/dataset",
+  "output_dir": "backend/finetune/jobguard_sft_v3/output/qwen2_5_7b_lora_r16",
+  "tasks": ["jd_extract", "job_classify", "risk_label", "skill_normalize"],
+  "training": {
+    "max_seq_length": 1024,
+    "num_train_epochs": 2,
+    "per_device_train_batch_size": 1,
+    "per_device_eval_batch_size": 1,
+    "gradient_accumulation_steps": 8,
+    "learning_rate": 0.0002,
+    "warmup_ratio": 0.03,
+    "weight_decay": 0.01,
+    "logging_steps": 10,
+    "eval_steps": 100,
+    "save_steps": 100,
+    "bf16": true,
+    "gradient_checkpointing": true,
+    "seed": 20260901
+  },
+  "lora": {
+    "r": 16,
+    "lora_alpha": 32,
+    "lora_dropout": 0.05,
+    "target_modules": ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+  },
+  "promotion_gate": {
+    "json_success_min": 0.99,
+    "required_field_success_min": 0.95,
+    "field_accuracy_improvement_min": 0.03,
+    "risk_label_f1_improvement_min": 0.05,
+    "no_source_fabrication_rate_max": 0.02
+  }
+}

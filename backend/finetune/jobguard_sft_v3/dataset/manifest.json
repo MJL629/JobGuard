@@ -1,0 +1,34 @@
+{
+  "name": "jobguard_sft_v3_multitask",
+  "version": "0.3.0",
+  "random_seed": 20260901,
+  "source_jobs": 500,
+  "examples": 2000,
+  "split_examples": {
+    "train": 1400,
+    "val": 300,
+    "test": 300
+  },
+  "task_counts": {
+    "jd_extract": 500,
+    "job_classify": 500,
+    "risk_label": 500,
+    "skill_normalize": 500
+  },
+  "split_policy": "70/15/15 by deterministic shuffle",
+  "tasks": [
+    "jd_extract",
+    "job_classify",
+    "risk_label",
+    "skill_normalize"
+  ],
+  "label_quality": {
+    "gold_seed": "人工种子岗位或项目内高质量种子数据",
+    "silver_rule": "公开岗位 CSV 经规则归一化生成，需要后续人工复核"
+  },
+  "human_review": {
+    "required": true,
+    "file": "gold_review_candidates.jsonl",
+    "recommendation": "优先复核 100 条高风险/大模型/边界岗位，升级为 gold label 后再训练正式模型。"
+  }
+}

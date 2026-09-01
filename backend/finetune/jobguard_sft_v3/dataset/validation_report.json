@@ -1,0 +1,83 @@
+{
+  "dataset": "E:\\jobguard\\jobguard\\backend\\finetune\\jobguard_sft_v3\\dataset",
+  "splits": [
+    {
+      "file": "train.jsonl",
+      "examples": 1400,
+      "assistant_json_success": 1.0,
+      "required_field_success": 1.0,
+      "task_counts": {
+        "jd_extract": 350,
+        "job_classify": 350,
+        "risk_label": 350,
+        "skill_normalize": 350
+      },
+      "label_quality_counts": {
+        "silver_rule": 1228,
+        "gold_seed": 172
+      },
+      "source_type_top10": {
+        "beijing_hr_open_data": 1228,
+        "BOSS直聘": 144,
+        "字节跳动官方校招": 8,
+        "实习僧": 4,
+        "BOSS直聘/国家大学生就业服务平台": 4,
+        "牛客网": 4,
+        "猎聘": 4,
+        "旷视官方校招": 4
+      },
+      "error_count": 0,
+      "errors_preview": []
+    },
+    {
+      "file": "val.jsonl",
+      "examples": 300,
+      "assistant_json_success": 1.0,
+      "required_field_success": 1.0,
+      "task_counts": {
+        "jd_extract": 75,
+        "job_classify": 75,
+        "risk_label": 75,
+        "skill_normalize": 75
+      },
+      "label_quality_counts": {
+        "silver_rule": 276,
+        "gold_seed": 24
+      },
+      "source_type_top10": {
+        "beijing_hr_open_data": 276,
+        "BOSS直聘": 20,
+        "中国中车官方校招": 4
+      },
+      "error_count": 0,
+      "errors_preview": []
+    },
+    {
+      "file": "test.jsonl",
+      "examples": 300,
+      "assistant_json_success": 1.0,
+      "required_field_success": 1.0,
+      "task_counts": {
+        "jd_extract": 75,
+        "job_classify": 75,
+        "risk_label": 75,
+        "skill_normalize": 75
+      },
+      "label_quality_counts": {
+        "gold_seed": 48,
+        "silver_rule": 252
+      },
+      "source_type_top10": {
+        "beijing_hr_open_data": 252,
+        "BOSS直聘": 40,
+        "深圳市属国企暑期实习公告": 4,
+        "猎聘": 4
+      },
+      "error_count": 0,
+      "errors_preview": []
+    }
+  ],
+  "total_examples": 2000,
+  "overall_json_success": 1.0,
+  "overall_required_field_success": 1.0
+}

@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "JobGuard Risk Label Output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["risk_level", "risk_flags", "evidence_phrases", "unknown_fields"],
+  "properties": {
+    "risk_level": {
+      "type": "string",
+      "enum": ["low", "medium", "high", "critical"]
+    },
+    "risk_flags": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "evidence_phrases": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "unknown_fields": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

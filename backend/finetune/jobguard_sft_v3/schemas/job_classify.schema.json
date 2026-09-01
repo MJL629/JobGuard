@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "JobGuard Job Classification Output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["job_category", "sub_category", "confidence", "evidence_keywords"],
+  "properties": {
+    "job_category": { "type": "string" },
+    "sub_category": { "type": "string" },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+    "evidence_keywords": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

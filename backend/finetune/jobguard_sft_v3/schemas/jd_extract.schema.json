@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "JobGuard JD Extraction Output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "company_name",
+    "job_title",
+    "job_category",
+    "sub_category",
+    "location",
+    "salary_min",
+    "salary_max",
+    "degree_requirement",
+    "required_skills",
+    "risk_flags"
+  ],
+  "properties": {
+    "company_name": { "type": "string" },
+    "job_title": { "type": "string" },
+    "job_category": { "type": "string" },
+    "sub_category": { "type": "string" },
+    "location": { "type": "string" },
+    "salary_min": { "type": ["integer", "null"] },
+    "salary_max": { "type": ["integer", "null"] },
+    "salary_unit": { "type": "string" },
+    "degree_requirement": { "type": "string" },
+    "experience_requirement": { "type": "string" },
+    "required_skills": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "benefits": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "risk_flags": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

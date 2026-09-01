@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "JobGuard Skill Normalization Output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["normalized_skills", "skill_groups"],
+  "properties": {
+    "normalized_skills": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "skill_groups": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": { "type": "string" }
+      }
+    }
+  }
+}
