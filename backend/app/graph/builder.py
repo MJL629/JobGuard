@@ -10,6 +10,7 @@ from typing import Optional
 from langgraph.graph import END, StateGraph
 
 from app.agents.orchestrator import detect_intent
+from app.agents.runtime import STATE_OWNERS, agent_runtime
 from app.agents.state import JobGuardState
 
 logger = logging.getLogger(__name__)
@@ -35,21 +36,6 @@ async def classify_intent_node(state: JobGuardState) -> dict:
 
 async def build_execution_plan_node(state: JobGuardState) -> dict:
     """为当前意图生成确定性的业务步骤，避免模型自行越权或跳步。"""
-    state_owners = {
-        "intent": "router",
-        "execution_plan": "router",
-        "evidence_policy": "evidence_gate",
-        "user_profile": "profile_service",
-        "user_projects": "profile_service",
-        "job_info": "job_service",
-        "retrieval_results": "job_retrieval",
-        "recommended_jobs": "job_recommendation",
-        "recommendation_breakdown": "job_recommendation",
-        "company_report": "background_check",
-        "match_score": "job_service",
-        "generated_resume": "resume_service",
-        "generated_greeting": "resume_service",
-    }
     plans = {
         "build_profile": [
             {"step": "extract_profile_evidence", "executor": "profile_service"},
@@ -84,7 +70,10 @@ async def build_execution_plan_node(state: JobGuardState) -> dict:
     intent = state.get("intent", "build_profile")
     return {
         "execution_plan": plans.get(intent, plans["build_profile"]),
-        "state_owners": state_owners,
+        "state_owners": STATE_OWNERS,
+        "runtime_blueprint": agent_runtime.describe(intent if intent in {
+            "build_profile", "analyze_job", "generate_resume", "recommend_jobs", "career_advice"
+        } else "build_profile"),
         "current_stage": "execution_planned",
         "graph_trace": [*state.get("graph_trace", []), "build_execution_plan"],
     }
@@ -102,6 +91,9 @@ async def apply_evidence_gate_node(state: JobGuardState) -> dict:
     }
     return {
         "evidence_policy": policy,
+        "prompt_assembly": agent_runtime.build_prompt(intent if intent in {
+            "build_profile", "analyze_job", "generate_resume", "recommend_jobs", "career_advice"
+        } else "build_profile").__dict__,
         "current_stage": "evidence_gate_ready",
         "graph_trace": [*state.get("graph_trace", []), "apply_evidence_gate"],
     }
@@ -157,6 +149,8 @@ async def classify_message(
         "execution_plan": result.get("execution_plan", []),
         "evidence_policy": result.get("evidence_policy", {}),
         "state_owners": result.get("state_owners", {}),
+        "runtime_blueprint": result.get("runtime_blueprint", {}),
+        "prompt_assembly": result.get("prompt_assembly", {}),
     }
 
 

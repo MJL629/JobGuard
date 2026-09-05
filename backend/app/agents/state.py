@@ -36,6 +36,8 @@ class JobGuardState(TypedDict, total=False):
     execution_plan: list[dict]
     evidence_policy: dict
     state_owners: dict
+    runtime_blueprint: dict
+    prompt_assembly: dict
 
     # 用户画像
     user_profile: Optional[dict]

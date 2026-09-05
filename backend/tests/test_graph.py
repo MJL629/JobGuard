@@ -38,8 +38,10 @@ async def test_classify_message_runs_through_graph(monkeypatch):
     planned_steps = [item["step"] for item in result["execution_plan"]]
     assert planned_steps == ["load_profile", "rule_recall", "keyword_recall", "semantic_recall", "fuse_and_rank"]
     assert result["execution_plan"][1]["writes"] == ["retrieval_results.rule"]
-    assert result.get("state_owners", {}).get("recommended_jobs") == "job_recommendation"
+    assert result.get("state_owners", {}).get("recommended_jobs") == "match_scorer"
     assert result["evidence_policy"]["allow_unverified_numbers"] is False
+    assert result["runtime_blueprint"]["runtime"] == "LangGraph + deterministic Agent Runtime"
+    assert "prompt_preview" in result["prompt_assembly"]
 
 
 def test_old_graph_import_path_reuses_production_builder():

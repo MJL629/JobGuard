@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.agents.tool_registry import tool_registry
 from app.agents.planner import Executor, Planner
+from app.agents.runtime import TaskType, agent_runtime
 from app.auth import get_current_user_id
 from app.graph.builder import get_jobguard_graph
 from app.models.agent_run import AgentRun
@@ -29,6 +30,11 @@ class PlanExecuteRequest(BaseModel):
     confirmed: bool = False
 
 
+class RuntimeBlueprintRequest(BaseModel):
+    task_type: TaskType = "analyze_job"
+    context: dict = Field(default_factory=dict)
+
+
 @router.get("/graph")
 async def get_agent_graph(_current_user_id: int = Depends(get_current_user_id)):
     graph = get_jobguard_graph().get_graph()
@@ -48,6 +54,18 @@ async def get_agent_graph(_current_user_id: int = Depends(get_current_user_id)):
             "business_dispatch": "app.api.chat",
             "note": "生产 LangGraph 执行意图分类、确定性任务规划和证据门禁；具体业务步骤由 API 层按计划显式执行并管理数据库事务。",
         },
+    }
+
+
+@router.post("/runtime/blueprint")
+async def get_runtime_blueprint(
+    req: RuntimeBlueprintRequest,
+    _current_user_id: int = Depends(get_current_user_id),
+):
+    """Inspect the concrete Agent Runtime DAG, context policy and prompt assembly."""
+    return {
+        "code": 0,
+        "data": agent_runtime.describe(req.task_type, req.context),
     }
 
 
